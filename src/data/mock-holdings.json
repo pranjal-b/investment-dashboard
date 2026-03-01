@@ -1,0 +1,494 @@
+{
+  "holdings": [
+    {
+      "id": "eq-1",
+      "assetName": "HDFC Bank",
+      "assetType": "Equity",
+      "sector": "Banking",
+      "marketCap": "Large",
+      "investedAmount": 450000,
+      "currentValue": 512000,
+      "targetAllocationPct": 12,
+      "benchmark": "Nifty Bank",
+      "transactions": [
+        { "date": "2022-01-15", "amount": -200000, "type": "buy" },
+        { "date": "2022-06-10", "amount": -250000, "type": "buy" },
+        { "date": "2023-03-20", "amount": 8000, "type": "dividend" },
+        { "date": "2024-01-10", "amount": 12000, "type": "dividend" }
+      ],
+      "benchmarkHistory": [
+        { "date": "2022-01-15", "value": 100 },
+        { "date": "2022-06-10", "value": 102 },
+        { "date": "2023-01-15", "value": 108 },
+        { "date": "2023-06-10", "value": 112 },
+        { "date": "2024-01-15", "value": 118 },
+        { "date": "2024-06-10", "value": 124 }
+      ]
+    },
+    {
+      "id": "eq-2",
+      "assetName": "ICICI Bank",
+      "assetType": "Equity",
+      "sector": "Banking",
+      "marketCap": "Large",
+      "investedAmount": 320000,
+      "currentValue": 398000,
+      "targetAllocationPct": 10,
+      "benchmark": "Nifty Bank",
+      "transactions": [
+        { "date": "2022-03-01", "amount": -150000, "type": "buy" },
+        { "date": "2022-09-15", "amount": -170000, "type": "buy" },
+        { "date": "2023-06-01", "amount": 6000, "type": "dividend" }
+      ]
+    },
+    {
+      "id": "eq-3",
+      "assetName": "TCS",
+      "assetType": "Equity",
+      "sector": "IT",
+      "marketCap": "Large",
+      "investedAmount": 580000,
+      "currentValue": 620000,
+      "targetAllocationPct": 14,
+      "benchmark": "Nifty IT",
+      "transactions": [
+        { "date": "2021-11-20", "amount": -300000, "type": "buy" },
+        { "date": "2022-05-10", "amount": -280000, "type": "buy" },
+        { "date": "2023-02-15", "amount": 15000, "type": "dividend" },
+        { "date": "2023-08-15", "amount": 18000, "type": "dividend" },
+        { "date": "2024-02-15", "amount": 20000, "type": "dividend" }
+      ]
+    },
+    {
+      "id": "eq-4",
+      "assetName": "Infosys",
+      "assetType": "Equity",
+      "sector": "IT",
+      "marketCap": "Large",
+      "investedAmount": 420000,
+      "currentValue": 465000,
+      "targetAllocationPct": 12,
+      "benchmark": "Nifty IT",
+      "transactions": [
+        { "date": "2022-02-01", "amount": -200000, "type": "buy" },
+        { "date": "2022-08-01", "amount": -220000, "type": "buy" },
+        { "date": "2023-05-01", "amount": 14000, "type": "dividend" }
+      ]
+    },
+    {
+      "id": "eq-5",
+      "assetName": "Sun Pharma",
+      "assetType": "Equity",
+      "sector": "Pharma",
+      "marketCap": "Large",
+      "investedAmount": 280000,
+      "currentValue": 310000,
+      "targetAllocationPct": 8,
+      "benchmark": "Nifty Pharma",
+      "transactions": [
+        { "date": "2022-04-10", "amount": -280000, "type": "buy" },
+        { "date": "2023-03-15", "amount": 8000, "type": "dividend" }
+      ]
+    },
+    {
+      "id": "eq-6",
+      "assetName": "Dr Reddy's",
+      "assetType": "Equity",
+      "sector": "Pharma",
+      "marketCap": "Large",
+      "investedAmount": 195000,
+      "currentValue": 228000,
+      "targetAllocationPct": 6,
+      "benchmark": "Nifty Pharma",
+      "transactions": [
+        { "date": "2022-06-20", "amount": -195000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "eq-7",
+      "assetName": "Hindustan Unilever",
+      "assetType": "Equity",
+      "sector": "FMCG",
+      "marketCap": "Large",
+      "investedAmount": 380000,
+      "currentValue": 410000,
+      "targetAllocationPct": 10,
+      "benchmark": "Nifty FMCG",
+      "transactions": [
+        { "date": "2021-12-01", "amount": -200000, "type": "buy" },
+        { "date": "2022-06-01", "amount": -180000, "type": "buy" },
+        { "date": "2023-03-01", "amount": 12000, "type": "dividend" },
+        { "date": "2024-03-01", "amount": 14000, "type": "dividend" }
+      ]
+    },
+    {
+      "id": "eq-8",
+      "assetName": "Maruti Suzuki",
+      "assetType": "Equity",
+      "sector": "Auto",
+      "marketCap": "Large",
+      "investedAmount": 265000,
+      "currentValue": 298000,
+      "targetAllocationPct": 8,
+      "benchmark": "Nifty Auto",
+      "transactions": [
+        { "date": "2022-05-15", "amount": -265000, "type": "buy" },
+        { "date": "2023-06-15", "amount": 5000, "type": "dividend" }
+      ]
+    },
+    {
+      "id": "eq-9",
+      "assetName": "Larsen & Toubro",
+      "assetType": "Equity",
+      "sector": "CapitalGoods",
+      "marketCap": "Large",
+      "investedAmount": 420000,
+      "currentValue": 495000,
+      "targetAllocationPct": 12,
+      "benchmark": "Nifty 50",
+      "transactions": [
+        { "date": "2022-01-20", "amount": -200000, "type": "buy" },
+        { "date": "2022-08-15", "amount": -220000, "type": "buy" },
+        { "date": "2023-05-20", "amount": 10000, "type": "dividend" }
+      ]
+    },
+    {
+      "id": "eq-10",
+      "assetName": "Reliance Industries",
+      "assetType": "Equity",
+      "sector": "Energy",
+      "marketCap": "Large",
+      "investedAmount": 550000,
+      "currentValue": 605000,
+      "targetAllocationPct": 15,
+      "benchmark": "Nifty 50",
+      "transactions": [
+        { "date": "2021-10-01", "amount": -250000, "type": "buy" },
+        { "date": "2022-04-01", "amount": -300000, "type": "buy" },
+        { "date": "2023-01-15", "amount": 9000, "type": "dividend" },
+        { "date": "2024-01-15", "amount": 10000, "type": "dividend" }
+      ]
+    },
+    {
+      "id": "eq-11",
+      "assetName": "Bharti Airtel",
+      "assetType": "Equity",
+      "sector": "Infra",
+      "marketCap": "Large",
+      "investedAmount": 340000,
+      "currentValue": 385000,
+      "targetAllocationPct": 10,
+      "benchmark": "Nifty 50",
+      "transactions": [
+        { "date": "2022-03-10", "amount": -170000, "type": "buy" },
+        { "date": "2022-09-10", "amount": -170000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "eq-12",
+      "assetName": "Asian Paints",
+      "assetType": "Equity",
+      "sector": "Chemicals",
+      "marketCap": "Large",
+      "investedAmount": 180000,
+      "currentValue": 195000,
+      "targetAllocationPct": 5,
+      "benchmark": "Nifty 50",
+      "transactions": [
+        { "date": "2022-07-01", "amount": -180000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "eq-13",
+      "assetName": "Titan",
+      "assetType": "Equity",
+      "sector": "Consumption",
+      "marketCap": "Large",
+      "investedAmount": 220000,
+      "currentValue": 248000,
+      "targetAllocationPct": 6,
+      "benchmark": "Nifty Consumer",
+      "transactions": [
+        { "date": "2022-04-20", "amount": -220000, "type": "buy" },
+        { "date": "2023-05-01", "amount": 4000, "type": "dividend" }
+      ]
+    },
+    {
+      "id": "eq-14",
+      "assetName": "Federal Bank",
+      "assetType": "Equity",
+      "sector": "Banking",
+      "marketCap": "Mid",
+      "investedAmount": 85000,
+      "currentValue": 102000,
+      "targetAllocationPct": 3,
+      "benchmark": "Nifty Midcap 100",
+      "transactions": [
+        { "date": "2022-08-01", "amount": -85000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "eq-15",
+      "assetName": "Persistent Systems",
+      "assetType": "Equity",
+      "sector": "IT",
+      "marketCap": "Mid",
+      "investedAmount": 120000,
+      "currentValue": 148000,
+      "targetAllocationPct": 4,
+      "benchmark": "Nifty Midcap 100",
+      "transactions": [
+        { "date": "2022-05-15", "amount": -120000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "mf-1",
+      "assetName": "HDFC Flexi Cap Fund",
+      "assetType": "MutualFund",
+      "sector": "Mixed",
+      "marketCap": "Large",
+      "investedAmount": 500000,
+      "currentValue": 565000,
+      "targetAllocationPct": 18,
+      "benchmark": "Nifty 500",
+      "sectorSplit": { "Banking": 15, "IT": 22, "Pharma": 8, "FMCG": 12, "Energy": 18, "Auto": 6, "Infra": 10, "CapitalGoods": 9 },
+      "transactions": [
+        { "date": "2021-12-10", "amount": -200000, "type": "buy" },
+        { "date": "2022-06-10", "amount": -150000, "type": "buy" },
+        { "date": "2022-12-10", "amount": -150000, "type": "buy" },
+        { "date": "2023-06-10", "amount": 20000, "type": "nav" }
+      ]
+    },
+    {
+      "id": "mf-2",
+      "assetName": "ICICI Pru Bluechip",
+      "assetType": "MutualFund",
+      "sector": "Large Cap",
+      "marketCap": "Large",
+      "investedAmount": 380000,
+      "currentValue": 425000,
+      "targetAllocationPct": 14,
+      "benchmark": "Nifty 50",
+      "sectorSplit": { "Banking": 25, "IT": 20, "FMCG": 12, "Energy": 15, "Auto": 8, "Pharma": 8, "Infra": 12 },
+      "transactions": [
+        { "date": "2022-02-01", "amount": -200000, "type": "buy" },
+        { "date": "2022-08-01", "amount": -180000, "type": "buy" },
+        { "date": "2023-02-01", "amount": 12000, "type": "nav" }
+      ]
+    },
+    {
+      "id": "mf-3",
+      "assetName": "SBI Small Cap Fund",
+      "assetType": "MutualFund",
+      "sector": "Small Cap",
+      "marketCap": "Small",
+      "investedAmount": 250000,
+      "currentValue": 318000,
+      "targetAllocationPct": 10,
+      "benchmark": "Nifty Smallcap 250",
+      "sectorSplit": { "CapitalGoods": 18, "Chemicals": 15, "Consumption": 14, "IT": 12, "Pharma": 10, "Auto": 8, "Banking": 8, "Infra": 15 },
+      "transactions": [
+        { "date": "2022-04-15", "amount": -125000, "type": "buy" },
+        { "date": "2022-10-15", "amount": -125000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "mf-4",
+      "assetName": "Parag Parikh Flexi Cap",
+      "assetType": "MutualFund",
+      "sector": "Mixed",
+      "marketCap": "Large",
+      "investedAmount": 300000,
+      "currentValue": 345000,
+      "targetAllocationPct": 11,
+      "benchmark": "Nifty 500",
+      "sectorSplit": { "IT": 28, "Banking": 18, "FMCG": 12, "Consumption": 15, "Pharma": 10, "Auto": 8, "Energy": 9 },
+      "transactions": [
+        { "date": "2022-03-01", "amount": -150000, "type": "buy" },
+        { "date": "2022-09-01", "amount": -150000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "mf-5",
+      "assetName": "Kotak Emerging Equity",
+      "assetType": "MutualFund",
+      "sector": "Mid Cap",
+      "marketCap": "Mid",
+      "investedAmount": 200000,
+      "currentValue": 242000,
+      "targetAllocationPct": 8,
+      "benchmark": "Nifty Midcap 100",
+      "sectorSplit": { "CapitalGoods": 22, "Chemicals": 18, "IT": 15, "Pharma": 12, "Auto": 10, "Consumption": 12, "Banking": 11 },
+      "transactions": [
+        { "date": "2022-06-01", "amount": -200000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "mf-6",
+      "assetName": "Axis Banking ETF",
+      "assetType": "ETF",
+      "sector": "Banking",
+      "marketCap": "Large",
+      "investedAmount": 150000,
+      "currentValue": 168000,
+      "targetAllocationPct": 5,
+      "benchmark": "Nifty Bank",
+      "sectorSplit": { "Banking": 100 },
+      "transactions": [
+        { "date": "2022-07-15", "amount": -150000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "mf-7",
+      "assetName": "ICICI Pru Nifty 50 ETF",
+      "assetType": "ETF",
+      "sector": "Broad Market",
+      "marketCap": "Large",
+      "investedAmount": 280000,
+      "currentValue": 312000,
+      "targetAllocationPct": 10,
+      "benchmark": "Nifty 50",
+      "sectorSplit": { "Banking": 18, "IT": 15, "Energy": 14, "FMCG": 10, "Auto": 8, "Pharma": 6, "Infra": 12, "CapitalGoods": 10, "Chemicals": 4, "Consumption": 3 },
+      "transactions": [
+        { "date": "2022-01-10", "amount": -140000, "type": "buy" },
+        { "date": "2022-07-10", "amount": -140000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "aif-1",
+      "assetName": "Motilal Oswal AIF - Equity",
+      "assetType": "AIF",
+      "sector": "Mixed",
+      "marketCap": "Large",
+      "investedAmount": 1000000,
+      "currentValue": 1180000,
+      "targetAllocationPct": 25,
+      "benchmark": "Nifty 50",
+      "sectorSplit": { "Banking": 20, "IT": 22, "FMCG": 12, "Energy": 15, "Pharma": 8, "Auto": 8, "Infra": 10, "CapitalGoods": 5 },
+      "transactions": [
+        { "date": "2021-11-01", "amount": -500000, "type": "buy" },
+        { "date": "2022-05-01", "amount": -500000, "type": "buy" },
+        { "date": "2023-11-01", "amount": 35000, "type": "nav" }
+      ]
+    },
+    {
+      "id": "aif-2",
+      "assetName": "Kotak AIF - Mid Cap",
+      "assetType": "AIF",
+      "sector": "Mid Cap",
+      "marketCap": "Mid",
+      "investedAmount": 500000,
+      "currentValue": 595000,
+      "targetAllocationPct": 12,
+      "benchmark": "Nifty Midcap 100",
+      "sectorSplit": { "CapitalGoods": 25, "Chemicals": 18, "IT": 15, "Pharma": 12, "Consumption": 15, "Auto": 8, "Banking": 7 },
+      "transactions": [
+        { "date": "2022-04-01", "amount": -250000, "type": "buy" },
+        { "date": "2022-10-01", "amount": -250000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "pms-1",
+      "assetName": "IIFL PMS - Multi Cap",
+      "assetType": "PMS",
+      "sector": "Mixed",
+      "marketCap": "Large",
+      "investedAmount": 750000,
+      "currentValue": 875000,
+      "targetAllocationPct": 18,
+      "benchmark": "Nifty 500",
+      "sectorSplit": { "Banking": 18, "IT": 20, "FMCG": 10, "Energy": 14, "Pharma": 8, "Auto": 7, "Infra": 12, "CapitalGoods": 8, "Consumption": 3 },
+      "transactions": [
+        { "date": "2022-01-15", "amount": -375000, "type": "buy" },
+        { "date": "2022-07-15", "amount": -375000, "type": "buy" },
+        { "date": "2023-07-15", "amount": 25000, "type": "nav" }
+      ]
+    },
+    {
+      "id": "pms-2",
+      "assetName": "Emkay PMS - Growth",
+      "assetType": "PMS",
+      "sector": "Mid Cap",
+      "marketCap": "Mid",
+      "investedAmount": 400000,
+      "currentValue": 468000,
+      "targetAllocationPct": 10,
+      "benchmark": "Nifty Midcap 100",
+      "sectorSplit": { "CapitalGoods": 22, "Chemicals": 20, "IT": 15, "Pharma": 10, "Consumption": 12, "Auto": 10, "Banking": 11 },
+      "transactions": [
+        { "date": "2022-06-01", "amount": -200000, "type": "buy" },
+        { "date": "2022-12-01", "amount": -200000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "eq-16",
+      "assetName": "Axis Bank",
+      "assetType": "Equity",
+      "sector": "Banking",
+      "marketCap": "Large",
+      "investedAmount": 195000,
+      "currentValue": 225000,
+      "targetAllocationPct": 6,
+      "benchmark": "Nifty Bank",
+      "transactions": [
+        { "date": "2022-09-01", "amount": -195000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "eq-17",
+      "assetName": "Wipro",
+      "assetType": "Equity",
+      "sector": "IT",
+      "marketCap": "Large",
+      "investedAmount": 120000,
+      "currentValue": 132000,
+      "targetAllocationPct": 4,
+      "benchmark": "Nifty IT",
+      "transactions": [
+        { "date": "2022-07-01", "amount": -120000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "eq-18",
+      "assetName": "Cipla",
+      "assetType": "Equity",
+      "sector": "Pharma",
+      "marketCap": "Large",
+      "investedAmount": 145000,
+      "currentValue": 168000,
+      "targetAllocationPct": 5,
+      "benchmark": "Nifty Pharma",
+      "transactions": [
+        { "date": "2022-05-20", "amount": -145000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "eq-19",
+      "assetName": "Nestle India",
+      "assetType": "Equity",
+      "sector": "FMCG",
+      "marketCap": "Large",
+      "investedAmount": 210000,
+      "currentValue": 235000,
+      "targetAllocationPct": 6,
+      "benchmark": "Nifty FMCG",
+      "transactions": [
+        { "date": "2022-04-10", "amount": -210000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "eq-20",
+      "assetName": "Bajaj Auto",
+      "assetType": "Equity",
+      "sector": "Auto",
+      "marketCap": "Large",
+      "investedAmount": 165000,
+      "currentValue": 192000,
+      "targetAllocationPct": 5,
+      "benchmark": "Nifty Auto",
+      "transactions": [
+        { "date": "2022-06-15", "amount": -165000, "type": "buy" }
+      ]
+    }
+  ]
+}
