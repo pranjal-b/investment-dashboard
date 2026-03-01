@@ -49,7 +49,8 @@ const defaultFilters: DashboardFilters = {
   valueMode: "absolute",
   gainFilter: "all",
   selectedSector: null,
-  coreBucketOption: "all",
+  coreBucketSelection: [],
+  coreSubCategorySelection: [],
   portfolioFilter: "all",
   fy: "2024-25",
   netCashFlowDays: 30,
@@ -59,11 +60,25 @@ const defaultFilters: DashboardFilters = {
 function applyFilters(holdings: Holding[], filters: DashboardFilters): Holding[] {
   let result = [...holdings];
 
-  const coreOption = filters.coreBucketOption ?? "all";
-  if (coreOption !== "all") {
-    const allowedTypes = getAssetTypesForCoreOption(coreOption);
-    if (allowedTypes.length > 0) {
-      result = result.filter((h) => allowedTypes.includes(h.assetType));
+  const bucketSelection = filters.coreBucketSelection ?? [];
+  const subSelection = filters.coreSubCategorySelection ?? [];
+  if (subSelection.length > 0) {
+    const allowedTypes = new Set<import("@/lib/types").AssetType>();
+    for (const v of subSelection) {
+      for (const t of getAssetTypesForCoreOption(v)) allowedTypes.add(t);
+    }
+    if (allowedTypes.size > 0) {
+      result = result.filter((h) => allowedTypes.has(h.assetType));
+    } else {
+      result = [];
+    }
+  } else if (bucketSelection.length > 0) {
+    const allowedTypes = new Set<import("@/lib/types").AssetType>();
+    for (const b of bucketSelection) {
+      for (const t of getAssetTypesForCoreOption(b)) allowedTypes.add(t);
+    }
+    if (allowedTypes.size > 0) {
+      result = result.filter((h) => allowedTypes.has(h.assetType));
     } else {
       result = [];
     }

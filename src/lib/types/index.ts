@@ -155,8 +155,10 @@ export interface DashboardFilters {
   valueMode: ValueMode;
   gainFilter: GainFilter;
   selectedSector: string | null; // For drilldown
-  /** Core bucket filter: "all" or option value from coreBuckets (e.g. equity, direct-stocks) */
-  coreBucketOption?: string;
+  /** Multi-select: bucket ids (equity, debt, alternatives, cash) */
+  coreBucketSelection?: string[];
+  /** Multi-select: sub-category option values (e.g. direct-stocks, aif); filtered by selected buckets */
+  coreSubCategorySelection?: string[];
   /** Portfolio filter: Core, New, or Old */
   portfolioFilter?: PortfolioFilter;
   /** FY for performance screen e.g. "2024-25" (Apr–Mar) */

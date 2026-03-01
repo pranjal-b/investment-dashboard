@@ -8,13 +8,23 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  SelectGroup,
-  SelectLabel,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { useDashboardStore } from "@/lib/store/dashboardStore";
 import { MARKET_CAPS, type InrScale, type PortfolioFilter } from "@/lib/types";
-import { CORE_BUCKETS } from "@/lib/coreBuckets";
-import { X } from "lucide-react";
+import {
+  BUCKET_IDS,
+  BUCKET_LABELS,
+  getSubOptionsForBuckets,
+} from "@/lib/coreBuckets";
+import { X, ChevronDown } from "lucide-react";
 
 function toDateString(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -65,8 +75,15 @@ export function GlobalFilters() {
     []
   );
 
+  const bucketSelection = filters.coreBucketSelection ?? [];
+  const subSelection = filters.coreSubCategorySelection ?? [];
+  const subOptions = useMemo(
+    () => getSubOptionsForBuckets(bucketSelection),
+    [bucketSelection]
+  );
   const hasActiveFilters =
-    (filters.coreBucketOption && filters.coreBucketOption !== "all") ||
+    bucketSelection.length > 0 ||
+    subSelection.length > 0 ||
     (filters.portfolioFilter && filters.portfolioFilter !== "all") ||
     filters.sectors.length > 0 ||
     filters.marketCaps.length > 0 ||
@@ -115,30 +132,90 @@ export function GlobalFilters() {
             />
           </FilterCell>
 
-          <FilterCell label="Core Buckets">
-            <Select
-              value={filters.coreBucketOption ?? "all"}
-              onValueChange={(v) => setFilters({ coreBucketOption: v })}
-            >
-              <SelectTrigger className="w-full h-9">
-                <SelectValue placeholder="All" />
-              </SelectTrigger>
-              <SelectContent className="max-h-[320px]">
-                <SelectItem value="all">All</SelectItem>
-                {CORE_BUCKETS.map((group) => (
-                  <SelectGroup key={group.label}>
-                    <SelectLabel className="text-muted-foreground">
-                      {group.label}
-                    </SelectLabel>
-                    {group.options.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
+          <FilterCell label="Asset class (buckets)">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full h-9 justify-between font-normal"
+                >
+                  {bucketSelection.length === 0
+                    ? "Select buckets…"
+                    : bucketSelection.map((id) => BUCKET_LABELS[id as keyof typeof BUCKET_LABELS]).join(", ")}
+                  <ChevronDown className="h-4 w-4 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56 max-h-[280px] overflow-y-auto">
+                <DropdownMenuLabel>Buckets</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {BUCKET_IDS.map((id) => (
+                  <DropdownMenuCheckboxItem
+                    key={id}
+                    checked={bucketSelection.includes(id)}
+                    onCheckedChange={(checked) => {
+                      const next = checked
+                        ? [...bucketSelection, id]
+                        : bucketSelection.filter((x) => x !== id);
+                      const nextSubOpts = getSubOptionsForBuckets(next);
+                      const validSub = (filters.coreSubCategorySelection ?? []).filter(
+                        (v) => nextSubOpts.some((o) => o.value === v)
+                      );
+                      setFilters({
+                        coreBucketSelection: next,
+                        coreSubCategorySelection: validSub,
+                      });
+                    }}
+                  >
+                    {BUCKET_LABELS[id]}
+                  </DropdownMenuCheckboxItem>
                 ))}
-              </SelectContent>
-            </Select>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </FilterCell>
+
+          <FilterCell label="Sub-categories">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full h-9 justify-between font-normal"
+                  disabled={bucketSelection.length === 0}
+                >
+                  {bucketSelection.length === 0
+                    ? "Select buckets first"
+                    : subSelection.length === 0
+                      ? "All in selected buckets"
+                      : subSelection.length <= 2
+                        ? subOptions.filter((o) => subSelection.includes(o.value)).map((o) => o.label).join(", ")
+                        : `${subSelection.length} selected`}
+                  <ChevronDown className="h-4 w-4 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-64 max-h-[320px] overflow-y-auto">
+                <DropdownMenuLabel>Sub-categories</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {subOptions.length === 0 ? (
+                  <div className="px-2 py-3 text-sm text-muted-foreground">
+                    Select buckets above first
+                  </div>
+                ) : (
+                  subOptions.map((opt) => (
+                    <DropdownMenuCheckboxItem
+                      key={opt.value}
+                      checked={subSelection.includes(opt.value)}
+                      onCheckedChange={(checked) => {
+                        const next = checked
+                          ? [...subSelection, opt.value]
+                          : subSelection.filter((x) => x !== opt.value);
+                        setFilters({ coreSubCategorySelection: next });
+                      }}
+                    >
+                      {opt.label}
+                    </DropdownMenuCheckboxItem>
+                  ))
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </FilterCell>
 
           <FilterCell label="Sector">

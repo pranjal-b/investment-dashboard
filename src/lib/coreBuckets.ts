@@ -102,3 +102,31 @@ export const CORE_BUCKETS: CoreBucketGroup[] = [
 export function getAssetTypesForCoreOption(value: string): AssetType[] {
   return CORE_BUCKET_TO_ASSET_TYPES[value] ?? [];
 }
+
+/** Top-level bucket ids and labels for multi-select */
+export const BUCKET_IDS = ["equity", "debt", "alternatives", "cash"] as const;
+export const BUCKET_LABELS: Record<(typeof BUCKET_IDS)[number], string> = {
+  equity: "Equity",
+  debt: "Debt / Fixed Income",
+  alternatives: "Alternatives",
+  cash: "Cash & Cash Equivalents",
+};
+
+/** Get bucket id for a group (first option value) */
+export function getBucketIdForGroup(group: CoreBucketGroup): string {
+  return group.options[0]?.value ?? "";
+}
+
+/** Sub-options for the second multi-select: only from groups whose bucket is in selectedBucketIds */
+export function getSubOptionsForBuckets(selectedBucketIds: string[]): CoreBucketOption[] {
+  if (selectedBucketIds.length === 0) return [];
+  const set = new Set(selectedBucketIds);
+  const out: CoreBucketOption[] = [];
+  for (const group of CORE_BUCKETS) {
+    const bucketId = getBucketIdForGroup(group);
+    if (set.has(bucketId)) {
+      for (const opt of group.options) out.push(opt);
+    }
+  }
+  return out;
+}
