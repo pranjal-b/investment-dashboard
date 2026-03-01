@@ -8,9 +8,12 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel,
 } from "@/components/ui/select";
 import { useDashboardStore } from "@/lib/store/dashboardStore";
-import { ASSET_TYPES, MARKET_CAPS, type InrScale } from "@/lib/types";
+import { MARKET_CAPS, type InrScale, type PortfolioFilter } from "@/lib/types";
+import { CORE_BUCKETS } from "@/lib/coreBuckets";
 import { X } from "lucide-react";
 
 function toDateString(d: Date): string {
@@ -63,7 +66,8 @@ export function GlobalFilters() {
   );
 
   const hasActiveFilters =
-    filters.assetClasses.length > 0 ||
+    (filters.coreBucketOption && filters.coreBucketOption !== "all") ||
+    (filters.portfolioFilter && filters.portfolioFilter !== "all") ||
     filters.sectors.length > 0 ||
     filters.marketCaps.length > 0 ||
     filters.gainFilter !== "all" ||
@@ -91,7 +95,7 @@ export function GlobalFilters() {
         </p>
       </header>
       <div className="p-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-x-6 gap-y-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-10 gap-x-6 gap-y-5">
           <FilterCell label="From">
             <input
               id="filter-from"
@@ -111,24 +115,27 @@ export function GlobalFilters() {
             />
           </FilterCell>
 
-          <FilterCell label="Asset Class">
+          <FilterCell label="Core Buckets">
             <Select
-              value={filters.assetClasses.join(",") || "all"}
-              onValueChange={(v) =>
-                setFilters({
-                  assetClasses: v === "all" ? [] : [v as (typeof ASSET_TYPES)[number]],
-                })
-              }
+              value={filters.coreBucketOption ?? "all"}
+              onValueChange={(v) => setFilters({ coreBucketOption: v })}
             >
               <SelectTrigger className="w-full h-9">
                 <SelectValue placeholder="All" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Asset Classes</SelectItem>
-                {ASSET_TYPES.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
-                  </SelectItem>
+              <SelectContent className="max-h-[320px]">
+                <SelectItem value="all">All</SelectItem>
+                {CORE_BUCKETS.map((group) => (
+                  <SelectGroup key={group.label}>
+                    <SelectLabel className="text-muted-foreground">
+                      {group.label}
+                    </SelectLabel>
+                    {group.options.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 ))}
               </SelectContent>
             </Select>
@@ -229,6 +236,23 @@ export function GlobalFilters() {
                 <SelectItem value="absolute">Absolute</SelectItem>
                 <SelectItem value="lac">Lac</SelectItem>
                 <SelectItem value="cr">Cr</SelectItem>
+              </SelectContent>
+            </Select>
+          </FilterCell>
+
+          <FilterCell label="Portfolio">
+            <Select
+              value={filters.portfolioFilter ?? "all"}
+              onValueChange={(v) => setFilters({ portfolioFilter: v as PortfolioFilter })}
+            >
+              <SelectTrigger className="w-full h-9">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="Core">Core</SelectItem>
+                <SelectItem value="New">New</SelectItem>
+                <SelectItem value="Old">Old</SelectItem>
               </SelectContent>
             </Select>
           </FilterCell>

@@ -103,7 +103,12 @@ export interface Holding {
   ytm?: number;
   firstNavDate?: string;
   inceptionDate?: string;
+  /** Portfolio bucket: Core, New, or Old (for portfolio filter) */
+  portfolioType?: "Core" | "New" | "Old";
 }
+
+/** Portfolio filter: which portfolio to show (Core / New / Old) */
+export type PortfolioFilter = "all" | "Core" | "New" | "Old";
 
 export interface PortfolioMetrics {
   totalInvested: number;
@@ -150,6 +155,10 @@ export interface DashboardFilters {
   valueMode: ValueMode;
   gainFilter: GainFilter;
   selectedSector: string | null; // For drilldown
+  /** Core bucket filter: "all" or option value from coreBuckets (e.g. equity, direct-stocks) */
+  coreBucketOption?: string;
+  /** Portfolio filter: Core, New, or Old */
+  portfolioFilter?: PortfolioFilter;
   /** FY for performance screen e.g. "2024-25" (Apr–Mar) */
   fy?: string;
   /** Net cash flow window in days (e.g. 30 for last month) */

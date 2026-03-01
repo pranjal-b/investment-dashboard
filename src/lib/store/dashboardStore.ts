@@ -34,6 +34,7 @@ import {
   computeSectorExposure,
   computeMarketCapExposure,
 } from "@/lib/calculations/exposure";
+import { getAssetTypesForCoreOption } from "@/lib/coreBuckets";
 
 const defaultDateRange: [Date, Date] = [
   subYears(new Date(), 3),
@@ -48,6 +49,8 @@ const defaultFilters: DashboardFilters = {
   valueMode: "absolute",
   gainFilter: "all",
   selectedSector: null,
+  coreBucketOption: "all",
+  portfolioFilter: "all",
   fy: "2024-25",
   netCashFlowDays: 30,
   inrScale: "lac",
@@ -56,6 +59,15 @@ const defaultFilters: DashboardFilters = {
 function applyFilters(holdings: Holding[], filters: DashboardFilters): Holding[] {
   let result = [...holdings];
 
+  const coreOption = filters.coreBucketOption ?? "all";
+  if (coreOption !== "all") {
+    const allowedTypes = getAssetTypesForCoreOption(coreOption);
+    if (allowedTypes.length > 0) {
+      result = result.filter((h) => allowedTypes.includes(h.assetType));
+    } else {
+      result = [];
+    }
+  }
   if (filters.assetClasses.length > 0) {
     result = result.filter((h) => filters.assetClasses.includes(h.assetType));
   }
@@ -84,6 +96,11 @@ function applyFilters(holdings: Holding[], filters: DashboardFilters): Holding[]
     result = result.filter((h) => h.currentValue > h.investedAmount);
   } else if (filters.gainFilter === "loss") {
     result = result.filter((h) => h.currentValue < h.investedAmount);
+  }
+
+  const portfolioFilter = filters.portfolioFilter ?? "all";
+  if (portfolioFilter !== "all") {
+    result = result.filter((h) => (h.portfolioType ?? "Core") === portfolioFilter);
   }
 
   return result;
