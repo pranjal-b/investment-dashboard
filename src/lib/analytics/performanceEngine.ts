@@ -4,9 +4,31 @@
  */
 
 import type { Holding } from "@/lib/types";
-import type { FYPerformance, MonthReturn, QuarterlyReturn, RollingPerformancePoint } from "./types";
-import { computeXIRR, aggregateCashflows } from "@/lib/calculations/xirr";
+import type {
+  FYPerformance,
+  MonthReturn,
+  QuarterlyReturn,
+  RollingPerformancePoint,
+  FYPerformanceByCategory,
+  CategoryMonthReturn,
+  FYPerformanceByVehicle,
+  VehicleMonthReturn,
+} from "./types";
+import type { AssetType } from "@/lib/types";
+import { computeXIRR, aggregateCashflows, periodReturnPctFromXIRR } from "@/lib/calculations/xirr";
 import { startOfMonth, endOfMonth, subMonths, format } from "date-fns";
+
+type MacroClassId = "equity" | "debt" | "alternatives";
+
+const ASSET_TYPE_TO_MACRO: Record<Holding["assetType"], MacroClassId> = {
+  Equity: "equity",
+  MutualFund: "equity",
+  PMS: "equity",
+  ETF: "equity",
+  IndexFund: "equity",
+  DebtMF: "debt",
+  AIF: "alternatives",
+};
 
 export interface PerformanceEngineInput {
   holdings: Holding[];
@@ -58,7 +80,7 @@ export function getFYPerformance(input: PerformanceEngineInput): FYPerformance {
     const monthEnd = endOfMonth(cursor);
     const range: [Date, Date] = [monthStart, monthEnd];
     const irrMonth = computeXIRR(cashflows, range);
-    const portfolioReturn = irrMonth != null ? irrMonth * 100 : 0;
+    const portfolioReturn = irrMonth != null ? periodReturnPctFromXIRR(irrMonth, range) : 0;
     const benchmarkReturn = benchmarkSeries?.length
       ? periodReturnFromSeries(benchmarkSeries, monthStart, monthEnd) ?? 0
       : 0;
@@ -81,25 +103,128 @@ export function getFYPerformance(input: PerformanceEngineInput): FYPerformance {
   const quarterly: QuarterlyReturn[] = quarters.map((q) => {
     const range: [Date, Date] = [q.start, q.end];
     const irr = computeXIRR(cashflows, range);
-    const absPct = irr != null ? irr * 100 : null;
-    return { period: q.label, irr: irr != null ? irr * 100 : null, absolutePct: absPct };
+    const periodPct = irr != null ? periodReturnPctFromXIRR(irr, range) : null;
+    return { period: q.label, irr: periodPct, absolutePct: periodPct };
   });
   const h1Start = new Date(y, 3, 1);
   const h1End = new Date(y, 8, 30);
-  const h1Irr = computeXIRR(cashflows, [h1Start, h1End]);
+  const h1Range: [Date, Date] = [h1Start, h1End];
+  const h1Irr = computeXIRR(cashflows, h1Range);
+  const h1Pct = h1Irr != null ? periodReturnPctFromXIRR(h1Irr, h1Range) : null;
   quarterly.push({
     period: "H1",
-    irr: h1Irr != null ? h1Irr * 100 : null,
-    absolutePct: h1Irr != null ? h1Irr * 100 : null,
+    irr: h1Pct,
+    absolutePct: h1Pct,
   });
-  const fyIrr = computeXIRR(cashflows, [fyStart, fyEnd]);
+  const fyRange: [Date, Date] = [fyStart, fyEnd];
+  const fyIrr = computeXIRR(cashflows, fyRange);
+  const fyPct = fyIrr != null ? periodReturnPctFromXIRR(fyIrr, fyRange) : null;
   quarterly.push({
     period: "Full Year",
-    irr: fyIrr != null ? fyIrr * 100 : null,
-    absolutePct: fyIrr != null ? fyIrr * 100 : null,
+    irr: fyPct,
+    absolutePct: fyPct,
   });
 
   return { fy, monthOnMonth, quarterly };
+}
+
+export function getFYPerformanceByCategory(input: PerformanceEngineInput): FYPerformanceByCategory {
+  const { holdings, fy, benchmarkSeries } = input;
+  const { start: fyStart, end: fyEnd } = parseFY(fy);
+
+  const byMacro = new Map<MacroClassId, Holding[]>();
+  byMacro.set("equity", []);
+  byMacro.set("debt", []);
+  byMacro.set("alternatives", []);
+
+  for (const h of holdings) {
+    const macro = ASSET_TYPE_TO_MACRO[h.assetType] ?? "equity";
+    byMacro.get(macro)!.push(h);
+  }
+
+  const cashflowsByMacro = new Map<MacroClassId, { date: string; amount: number }[]>();
+  for (const [macro, list] of byMacro) {
+    cashflowsByMacro.set(macro, aggregateCashflows(list));
+  }
+  const allCashflows = aggregateCashflows(holdings);
+  const portfolioCashflows = allCashflows.map((c) => ({ date: c.date, amount: c.amount, type: "nav" as const }));
+
+  const monthOnMonth: CategoryMonthReturn[] = [];
+  const cursor = new Date(fyStart);
+  while (cursor <= fyEnd) {
+    const monthStart = startOfMonth(cursor);
+    const monthEnd = endOfMonth(cursor);
+    const range: [Date, Date] = [monthStart, monthEnd];
+
+    const equityIrr = computeXIRR(
+      cashflowsByMacro.get("equity")!.map((c) => ({ ...c, type: "nav" as const })),
+      range
+    );
+    const debtIrr = computeXIRR(
+      cashflowsByMacro.get("debt")!.map((c) => ({ ...c, type: "nav" as const })),
+      range
+    );
+    const alternativesIrr = computeXIRR(
+      cashflowsByMacro.get("alternatives")!.map((c) => ({ ...c, type: "nav" as const })),
+      range
+    );
+    const portfolioIrr = computeXIRR(portfolioCashflows, range);
+    const benchmarkReturn = benchmarkSeries?.length
+      ? periodReturnFromSeries(benchmarkSeries, monthStart, monthEnd) ?? 0
+      : 0;
+
+    monthOnMonth.push({
+      month: format(monthStart, "MMM yyyy"),
+      equity: equityIrr != null ? periodReturnPctFromXIRR(equityIrr, range) : null,
+      debt: debtIrr != null ? periodReturnPctFromXIRR(debtIrr, range) : null,
+      alternatives: alternativesIrr != null ? periodReturnPctFromXIRR(alternativesIrr, range) : null,
+      portfolio: portfolioIrr != null ? periodReturnPctFromXIRR(portfolioIrr, range) : 0,
+      benchmark: benchmarkReturn,
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  return { fy, monthOnMonth };
+}
+
+/** FY Performance by vehicle (asset type): MoM return % per Equity, MutualFund, PMS, etc. */
+export function getFYPerformanceByVehicle(input: PerformanceEngineInput): FYPerformanceByVehicle {
+  const { holdings, fy } = input;
+  const { start: fyStart, end: fyEnd } = parseFY(fy);
+
+  const byVehicle = new Map<AssetType, Holding[]>();
+  for (const h of holdings) {
+    const v = h.assetType;
+    if (!byVehicle.has(v)) byVehicle.set(v, []);
+    byVehicle.get(v)!.push(h);
+  }
+
+  const cashflowsByVehicle = new Map<AssetType, { date: string; amount: number }[]>();
+  for (const [vehicle, list] of byVehicle) {
+    cashflowsByVehicle.set(vehicle, aggregateCashflows(list));
+  }
+
+  const monthOnMonth: VehicleMonthReturn[] = [];
+  const cursor = new Date(fyStart);
+  while (cursor <= fyEnd) {
+    const monthStart = startOfMonth(cursor);
+    const monthEnd = endOfMonth(cursor);
+    const range: [Date, Date] = [monthStart, monthEnd];
+
+    const returns: Record<string, number | null> = {};
+    for (const [vehicle, cf] of cashflowsByVehicle) {
+      const irr = computeXIRR(cf.map((c) => ({ ...c, type: "nav" as const })), range);
+      returns[vehicle] = irr != null ? periodReturnPctFromXIRR(irr, range) : null;
+    }
+
+    monthOnMonth.push({
+      month: format(monthStart, "MMM yyyy"),
+      returns,
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  return { fy, monthOnMonth };
 }
 
 export function getRollingPerformance(

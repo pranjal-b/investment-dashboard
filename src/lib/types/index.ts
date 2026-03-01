@@ -144,7 +144,18 @@ export type ValueMode = "absolute" | "percentage";
 
 export type GainFilter = "all" | "gain" | "loss";
 
-/** Display scale for INR: full number (Indian grouping), Lakh, or Crore */
+/** Reporting currency for display */
+export type ReportingCurrency = "INR" | "USD";
+
+/** Reporting units: scale for numeric display */
+export type ReportingUnits =
+  | "absolute"
+  | "lac"
+  | "cr"
+  | "million"
+  | "billion";
+
+/** @deprecated Use ReportingUnits */
 export type InrScale = "absolute" | "lac" | "cr";
 
 /** Scope: Asset class bucket — All | Equity | Debt | Alternatives | Cash */
@@ -188,6 +199,24 @@ export interface DashboardFilters {
   fy?: string;
   /** Net cash flow window in days (e.g. 30 for last month) */
   netCashFlowDays?: number;
-  /** INR display: absolute (full number), lac (Lakh), cr (Crore) */
+  /** Reporting currency: INR | USD */
+  reportingCurrency?: ReportingCurrency;
+  /** Reporting units: Absolute | Lac | Cr | Million | Billion */
+  reportingUnits?: ReportingUnits;
+  /** @deprecated Use reportingUnits */
   inrScale?: InrScale;
+
+  // FY Performance module (institutional chart)
+  /** Selected FY for performance chart e.g. "2024-25" */
+  performanceFY?: string;
+  /** Frequency: mom | qoq | yoy */
+  performanceFrequency?: "mom" | "qoq" | "yoy";
+  /** Selected benchmark keys e.g. ["nifty50"]; at least one */
+  performanceBenchmarks?: string[];
+  /** Y-axis mode: value (₹) | return (%) | indexed (100) */
+  performanceYAxisMode?: "value" | "return" | "indexed";
+  /** FY Performance view: portfolio (aggregate) | assetClass | vehicle */
+  performanceViewBy?: "portfolio" | "assetClass" | "vehicle";
+  /** Performance Matrix data source: live (from holdings) or sample scenario */
+  performanceMatrixScenario?: "live" | "moderate" | "conservative" | "bull";
 }

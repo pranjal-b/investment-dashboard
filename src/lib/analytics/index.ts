@@ -9,7 +9,14 @@ export type { PortfolioEngineInput } from "./portfolioEngine";
 export { getAllocationBuckets } from "./allocationEngine";
 export type { AllocationEngineInput } from "./allocationEngine";
 
-export { getReturnMetrics, getPeriodReturns, getHoldingPeriodReturns } from "./returnEngine";
+export {
+  getMacroAllocation,
+  getRebalanceInsight,
+  getAllocationHealthScore,
+  getTopHoldingsByDeviation,
+} from "./allocationAnalytics";
+
+export { getReturnMetrics, getPeriodReturns, getHoldingPeriodReturns, getBucketPeriodReturns, PERFORMANCE_MATRIX_PERIODS } from "./returnEngine";
 export type { ReturnEngineInput, HoldingPeriodReturn } from "./returnEngine";
 
 export { getRiskMetrics, getDebtRisk } from "./riskEngine";
@@ -18,12 +25,16 @@ export type { RiskEngineInput } from "./riskEngine";
 export { getPolicyChecks } from "./complianceEngine";
 export type { ComplianceEngineInput } from "./complianceEngine";
 
-export { getFYPerformance, getRollingPerformance } from "./performanceEngine";
+export { getFYPerformance, getFYPerformanceByCategory, getFYPerformanceByVehicle, getRollingPerformance } from "./performanceEngine";
 export type { PerformanceEngineInput } from "./performanceEngine";
 
 export type {
   PortfolioSnapshot,
   AllocationBucket,
+  MacroClassId,
+  MacroAllocationRow,
+  RebalanceInsight,
+  TopHoldingAllocationRow,
   ReturnMetrics,
   PeriodReturn,
   RiskMetrics,
@@ -31,7 +42,12 @@ export type {
   PolicyCheck,
   PolicyStatus,
   FYPerformance,
+  FYPerformanceByCategory,
+  FYPerformanceByVehicle,
+  CategoryMonthReturn,
+  VehicleMonthReturn,
   MonthReturn,
   QuarterlyReturn,
   RollingPerformancePoint,
+  BucketPeriodReturn,
 } from "./types";

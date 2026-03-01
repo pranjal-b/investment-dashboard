@@ -16,6 +16,7 @@ export interface PortfolioSnapshot {
   portfolioXIRR: number | null;
   benchmarkXIRR: number | null;
   peerXIRR: number | null;
+  numberOfPortfolios: number;
   numberOfSchemes: number;
   numberOfWealthManagers: number;
   portfolioTER: number;
@@ -40,6 +41,38 @@ export interface AllocationBucket {
   unrealizedLT: number;
 }
 
+/** Macro asset class (Equity / Debt / Alternatives / Cash) for allocation snapshot */
+export type MacroClassId = "equity" | "debt" | "alternatives" | "cash";
+
+export interface MacroAllocationRow {
+  classId: MacroClassId;
+  label: string;
+  actualPct: number;
+  targetPct: number;
+  value: number;
+  invested: number;
+  residualPct: number;
+}
+
+export interface RebalanceInsight {
+  message: string;
+  overweightClass: string;
+  underweightClass: string;
+  rebalanceAmount: number;
+  deviationPct: number;
+}
+
+export interface TopHoldingAllocationRow {
+  holdingId: string;
+  holdingName: string;
+  weightPct: number;
+  targetPct: number;
+  deviationPct: number;
+  value: number;
+  invested: number;
+  gain: number;
+}
+
 export interface ReturnMetrics {
   portfolioXIRR: number | null;
   benchmarkXIRR: number | null;
@@ -56,6 +89,14 @@ export interface PeriodReturn {
   equity: number | null;
   debt: number | null;
   alternatives: number | null;
+}
+
+/** Bucket-wise period returns for Performance Matrix (periods as columns) */
+export interface BucketPeriodReturn {
+  bucketId: AllocationBucketId;
+  label: string;
+  periodReturns: Record<string, number | null>;
+  xirrPct: number | null;
 }
 
 export interface RiskMetrics {
@@ -102,6 +143,33 @@ export interface FYPerformance {
   fy: string; // e.g. "2024-25"
   monthOnMonth: MonthReturn[];
   quarterly: QuarterlyReturn[];
+}
+
+/** Month-on-month return by asset category for FY Performance category-wise view */
+export interface CategoryMonthReturn {
+  month: string;
+  equity: number | null;
+  debt: number | null;
+  alternatives: number | null;
+  portfolio: number;
+  benchmark: number;
+}
+
+export interface FYPerformanceByCategory {
+  fy: string;
+  monthOnMonth: CategoryMonthReturn[];
+}
+
+/** Month-on-month return by vehicle (asset type) for FY Performance vehicle-wise view */
+export interface VehicleMonthReturn {
+  month: string;
+  /** Return % per vehicle (asset type); only keys present in holdings */
+  returns: Record<string, number | null>;
+}
+
+export interface FYPerformanceByVehicle {
+  fy: string;
+  monthOnMonth: VehicleMonthReturn[];
 }
 
 export interface RollingPerformancePoint {

@@ -28,6 +28,13 @@ export const SEMANTIC = {
   neutral: SLATE[600],
 };
 
+// Deviation chart: overweight / underweight / within threshold
+export const DEVIATION_COLORS = {
+  overweight: "#B45309",  // Muted amber
+  underweight: "#1D4ED8", // Muted blue
+  within: SLATE[400],
+};
+
 // Bar/series fallback order
 export const CHART_COLORS = [
   ASSET_COLORS.Equity,
@@ -58,16 +65,27 @@ function indianGrouping(n: number): string {
   return `${sign}${grouped}`;
 }
 
-/** Format INR with explicit scale: absolute (full), lac (Lakh), cr (Crore) */
+/** Reporting units scale */
+export type ReportingUnitsScale =
+  | "absolute"
+  | "lac"
+  | "cr"
+  | "million"
+  | "billion";
+
+/** Format INR with explicit scale: absolute, lac (Lakh), cr (Crore), million, billion */
 export function formatINRWithScale(
   value: number,
-  scale: "absolute" | "lac" | "cr"
+  scale: ReportingUnitsScale | "absolute" | "lac" | "cr"
 ): string {
   const abs = Math.abs(value);
   const sign = value < 0 ? "−" : "";
   if (scale === "absolute") return `₹${indianGrouping(value)}`;
   if (scale === "lac") return `${sign}₹${(abs / 1e5).toFixed(1)} L`;
-  return `${sign}₹${(abs / 1e7).toFixed(1)} Cr`;
+  if (scale === "cr") return `${sign}₹${(abs / 1e7).toFixed(1)} Cr`;
+  if (scale === "million") return `${sign}₹${(abs / 1e6).toFixed(1)} M`;
+  if (scale === "billion") return `${sign}₹${(abs / 1e9).toFixed(1)} B`;
+  return `₹${indianGrouping(value)}`;
 }
 
 /** Percentage, 1 decimal */

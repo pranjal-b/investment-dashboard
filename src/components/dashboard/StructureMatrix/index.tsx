@@ -6,7 +6,8 @@ import { usePortfolioSnapshot } from "@/lib/store/dashboardStore";
 export function StructureMatrix() {
   const snapshot = usePortfolioSnapshot();
 
-  const rows = [
+  const items = [
+    { label: "# Portfolios", value: snapshot.numberOfPortfolios.toLocaleString() },
     { label: "# Schemes", value: snapshot.numberOfSchemes.toLocaleString() },
     { label: "# Wealth Managers", value: snapshot.numberOfWealthManagers.toLocaleString() },
     { label: "Portfolio TER", value: `${snapshot.portfolioTER.toFixed(2)}%` },
@@ -18,28 +19,26 @@ export function StructureMatrix() {
   ];
 
   return (
-    <Card className="border-0 shadow-[0_1px_3px_rgba(0,0,0,0.04)] rounded-2xl overflow-hidden">
-      <CardHeader className="pb-2">
-        <h2 className="text-base font-semibold">Portfolio Structure</h2>
-        <p className="text-xs text-muted-foreground">
-          Scheme count, TER, lock-in, direct/indexed/active/alternative mix
-        </p>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {rows.map((row) => (
-            <div
-              key={row.label}
-              className="rounded-lg bg-muted/40 px-3 py-2"
-            >
-              <p className="text-xs text-muted-foreground">{row.label}</p>
-              <p className="text-sm font-semibold tabular-nums mt-0.5">
-                {row.value}
-              </p>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+    <div className="space-y-4">
+      <h2 className="text-lg font-semibold text-foreground">Portfolio Structure</h2>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-9 gap-3">
+        {items.map((item) => (
+          <Card
+            key={item.label}
+            className="border border-border/60 rounded-xl overflow-hidden shadow-none"
+          >
+            <CardHeader className="pb-1 pt-3 px-3">
+              <h3 className="text-xs font-medium text-muted-foreground truncate">
+                {item.label}
+              </h3>
+            </CardHeader>
+            <CardContent className="px-3 pb-3 pt-0">
+              <p className="text-lg font-semibold tabular-nums truncate">{item.value}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
   );
 }

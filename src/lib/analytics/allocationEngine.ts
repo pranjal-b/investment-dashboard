@@ -85,7 +85,8 @@ export function getAllocationBuckets(input: AllocationEngineInput): AllocationBu
     const cost = h.costValue ?? h.investedAmount;
     data.invested += cost;
     data.marketValue += h.currentValue;
-    data.targetWeighted += (h.targetAllocationPct / 100) * totalMarketValue;
+    // Target weighted = sum of (holding's target % × holding's value) so bucket targets can sum to 100%
+    data.targetWeighted += (h.targetAllocationPct / 100) * h.currentValue;
     const gain = h.currentValue - cost;
     // Simplified: assume ST if held < 1 year (no purchase date in base holding)
     const isLT = true; // could use first transaction date if available
@@ -99,13 +100,19 @@ export function getAllocationBuckets(input: AllocationEngineInput): AllocationBu
     byBucket.set(bucketId, data);
   }
 
+  const totalTargetWeighted = allBucketIds.reduce(
+    (sum, bid) => sum + byBucket.get(bid)!.targetWeighted,
+    0
+  );
+
   const result: AllocationBucket[] = [];
   for (const bucketId of allBucketIds) {
     const data = byBucket.get(bucketId)!;
     const allocationPct = (data.marketValue / totalMarketValue) * 100;
-    const targetPct = data.marketValue > 0
-      ? (data.targetWeighted / totalMarketValue) * 100
-      : 0;
+    const targetPct =
+      totalTargetWeighted > 0
+        ? (data.targetWeighted / totalTargetWeighted) * 100
+        : 0;
     const residualPct = allocationPct - targetPct;
     const pnl = data.marketValue - data.invested;
     const roi = data.invested > 0 ? (pnl / data.invested) * 100 : 0;

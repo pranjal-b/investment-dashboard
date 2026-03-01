@@ -3,10 +3,34 @@
  * Realized vs unrealized gain. Uses shared xirr utility.
  */
 
-import type { Holding } from "@/lib/types";
-import type { ReturnMetrics, PeriodReturn } from "./types";
+import type { Holding, AllocationBucketId } from "@/lib/types";
+import type { ReturnMetrics, PeriodReturn, BucketPeriodReturn } from "./types";
 import { computeXIRR, aggregateCashflows } from "@/lib/calculations/xirr";
 import { subMonths } from "date-fns";
+
+const BUCKET_LABELS: Record<AllocationBucketId, string> = {
+  DirectEquity: "Direct Equity",
+  EquityMF: "Equity MF",
+  DebtMF: "Debt MF",
+  AlternativeFOF: "Alternative FOF",
+  PMS: "PMS",
+  AIF: "AIF",
+  ETF: "ETF",
+  IndexFund: "Index Fund",
+};
+
+function assetTypeToBucket(assetType: Holding["assetType"]): AllocationBucketId {
+  const map: Record<string, AllocationBucketId> = {
+    Equity: "DirectEquity",
+    MutualFund: "EquityMF",
+    DebtMF: "DebtMF",
+    AIF: "AIF",
+    PMS: "PMS",
+    ETF: "ETF",
+    IndexFund: "IndexFund",
+  };
+  return map[assetType] ?? "EquityMF";
+}
 
 export interface ReturnEngineInput {
   holdings: Holding[];
@@ -36,11 +60,13 @@ function periodReturnFromSeries(
 
 export function getReturnMetrics(input: ReturnEngineInput): ReturnMetrics {
   const { holdings, dateRange, benchmarkSeries, peerSeries } = input;
-  const cashflows = aggregateCashflows(holdings).map((c) => ({
-    date: c.date,
-    amount: c.amount,
-    type: "nav" as const,
-  }));
+  const rawCashflows = aggregateCashflows(holdings);
+  const end = dateRange?.[1] ?? new Date();
+  const totalMarketValue = holdings.reduce((s, h) => s + h.currentValue, 0);
+  const cashflows = [
+    ...rawCashflows.map((c) => ({ date: c.date, amount: c.amount, type: "nav" as const })),
+    { date: toDateStr(end), amount: totalMarketValue, type: "nav" as const },
+  ];
   const xirr = computeXIRR(cashflows, dateRange);
   const portfolioXIRRPct = xirr != null ? xirr * 100 : null;
 
@@ -96,16 +122,24 @@ const PERIOD_MONTHS: { period: string; months: number }[] = [
   { period: "SI", months: 120 },
 ];
 
+function toDateStr(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
 export function getPeriodReturns(input: ReturnEngineInput): PeriodReturn[] {
   const { holdings, dateRange, benchmarkSeries, peerSeries } = input;
   const asOf = dateRange?.[1] ?? new Date();
   const rawCashflows = aggregateCashflows(holdings);
-  const cashflows = rawCashflows.map((c) => ({ date: c.date, amount: c.amount, type: "nav" as const }));
+  const totalMarketValue = holdings.reduce((s, h) => s + h.currentValue, 0);
+  const cashflowsWithTerminal = [
+    ...rawCashflows.map((c) => ({ date: c.date, amount: c.amount, type: "nav" as const })),
+    { date: toDateStr(asOf), amount: totalMarketValue, type: "nav" as const },
+  ];
 
   return PERIOD_MONTHS.map(({ period, months }) => {
     const start = subMonths(asOf, months);
     const range: [Date, Date] = [start, asOf];
-    const pXirr = computeXIRR(cashflows, range);
+    const pXirr = computeXIRR(cashflowsWithTerminal, range);
     const portfolio = pXirr != null ? pXirr * 100 : null;
     const benchmark = benchmarkSeries?.length
       ? periodReturnFromSeries(benchmarkSeries, asOf, months)
@@ -123,6 +157,50 @@ export function getPeriodReturns(input: ReturnEngineInput): PeriodReturn[] {
       alternatives: null,
     };
   });
+}
+
+/** Period column order for Performance Matrix (horizontal headers) */
+export const PERFORMANCE_MATRIX_PERIODS = ["3M", "6M", "1Y", "3Y", "SI"] as const;
+
+export function getBucketPeriodReturns(input: ReturnEngineInput): BucketPeriodReturn[] {
+  const { holdings, dateRange } = input;
+  const asOf = dateRange?.[1] ?? new Date();
+
+  const byBucket = new Map<AllocationBucketId, Holding[]>();
+  for (const h of holdings) {
+    const bucketId = assetTypeToBucket(h.assetType);
+    if (!byBucket.has(bucketId)) byBucket.set(bucketId, []);
+    byBucket.get(bucketId)!.push(h);
+  }
+
+  const asOfStr = toDateStr(asOf);
+  const result: BucketPeriodReturn[] = [];
+  for (const [bucketId, bucketHoldings] of byBucket) {
+    if (bucketHoldings.length === 0) continue;
+    const rawCashflows = aggregateCashflows(bucketHoldings);
+    const bucketMarketValue = bucketHoldings.reduce((s, h) => s + h.currentValue, 0);
+    const cashflowsWithTerminal = [
+      ...rawCashflows.map((c) => ({ date: c.date, amount: c.amount, type: "nav" as const })),
+      { date: asOfStr, amount: bucketMarketValue, type: "nav" as const },
+    ];
+    const periodReturns: Record<string, number | null> = {};
+    for (const { period, months } of PERIOD_MONTHS) {
+      const start = subMonths(asOf, months);
+      const range: [Date, Date] = [start, asOf];
+      const r = computeXIRR(cashflowsWithTerminal, range);
+      periodReturns[period] = r != null ? r * 100 : null;
+    }
+    const xirr = computeXIRR(cashflowsWithTerminal, dateRange);
+    result.push({
+      bucketId,
+      label: BUCKET_LABELS[bucketId],
+      periodReturns,
+      xirrPct: xirr != null ? xirr * 100 : null,
+    });
+  }
+
+  const order = (["DirectEquity", "EquityMF", "DebtMF", "AlternativeFOF", "PMS", "AIF", "ETF", "IndexFund"] as AllocationBucketId[]);
+  return result.sort((a, b) => order.indexOf(a.bucketId) - order.indexOf(b.bucketId));
 }
 
 export interface HoldingPeriodReturn {

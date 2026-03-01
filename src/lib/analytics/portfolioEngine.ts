@@ -86,6 +86,9 @@ export function getPortfolioSnapshot(input: PortfolioEngineInput): PortfolioSnap
     })
     .reduce((s, c) => s + c.amount, 0);
 
+  const portfolioIds = new Set(
+    holdings.map((h) => h.portfolioType ?? "Core")
+  );
   const schemeIds = new Set(holdings.map((h) => h.id));
   const wealthManagerIds = new Set(
     holdings.map((h) => h.wealthManagerId).filter(Boolean) as string[]
@@ -124,6 +127,7 @@ export function getPortfolioSnapshot(input: PortfolioEngineInput): PortfolioSnap
     portfolioXIRR: portfolioXIRRPct,
     benchmarkXIRR: benchmarkXIRRPct,
     peerXIRR: peerXIRRPct,
+    numberOfPortfolios: portfolioIds.size,
     numberOfSchemes: schemeIds.size,
     numberOfWealthManagers: wealthManagerIds.size,
     portfolioTER: terWeighted,

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 export interface SegmentedControlOption<T extends string = string> {
@@ -30,13 +31,29 @@ export function SegmentedControl<T extends string>({
   onChange,
   className,
 }: SegmentedControlProps<T>) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const selectedRef = useRef<HTMLButtonElement>(null);
+
   const normalized = normalizeOptions(options);
+
+  useEffect(() => {
+    if (!selectedRef.current || !scrollRef.current) return;
+    selectedRef.current.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "center",
+    });
+  }, [value]);
+
   return (
     <div
+      ref={scrollRef}
       className={cn(
-        "inline-flex bg-slate-100 rounded-xl p-1 transition-[box-shadow] duration-150",
+        "flex overflow-x-auto overflow-y-hidden gap-1 w-full min-w-0 bg-slate-100 rounded-xl p-0.5 scroll-smooth",
+        "touch-pan-x overscroll-x-contain",
         className
       )}
+      style={{ WebkitOverflowScrolling: "touch" } as React.CSSProperties}
       role="group"
       aria-label="Segmented control"
     >
@@ -45,13 +62,15 @@ export function SegmentedControl<T extends string>({
         return (
           <button
             key={optValue}
+            ref={isSelected ? selectedRef : undefined}
             type="button"
             onClick={() => onChange(optValue)}
             className={cn(
-              "px-4 py-2 text-sm font-medium rounded-lg transition-all duration-150",
+              "px-2.5 py-1.5 min-h-9 text-sm font-medium rounded-lg transition-all duration-150 shrink-0 whitespace-nowrap",
+              "touch-manipulation select-none",
               isSelected
                 ? "bg-white shadow-sm text-slate-900"
-                : "text-slate-500 hover:text-slate-800"
+                : "text-slate-500 hover:text-slate-800 active:bg-slate-200/50"
             )}
             aria-pressed={isSelected}
           >

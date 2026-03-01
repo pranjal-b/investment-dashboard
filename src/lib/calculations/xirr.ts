@@ -4,8 +4,24 @@
  * For irregular cashflows - standard for portfolio return calculation
  */
 
+import { differenceInDays } from "date-fns";
 import xirr from "xirr";
 import type { Transaction } from "@/lib/types";
+
+/**
+ * Convert annualized XIRR to period return % for a given date range.
+ * Use this when compounding period-by-period (e.g. indexed base 100).
+ * Formula: periodReturn = (1 + annualizedIrr)^(days/365) - 1, then periodReturn * 100.
+ */
+export function periodReturnPctFromXIRR(
+  annualizedIrr: number,
+  range: [Date, Date]
+): number {
+  const [start, end] = range;
+  const days = Math.max(1, differenceInDays(end, start));
+  const periodReturn = Math.pow(1 + annualizedIrr, days / 365) - 1;
+  return periodReturn * 100;
+}
 
 /**
  * Compute XIRR from an array of transactions
