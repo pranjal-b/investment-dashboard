@@ -91,7 +91,9 @@ export function createModernTheme(overrides?: Record<string, unknown>): Record<s
       textStyle: { color: "#f1f5f9", fontSize: 12 },
       padding: [10, 14],
       confine: true,
-      ...overrides?.tooltip,
+      ...(overrides?.tooltip && typeof overrides.tooltip === "object" && !Array.isArray(overrides.tooltip)
+        ? overrides.tooltip
+        : {}),
     },
     legend: {
       bottom: 0,
@@ -101,9 +103,11 @@ export function createModernTheme(overrides?: Record<string, unknown>): Record<s
       itemHeight: 12,
       itemGap: 16,
       icon: "roundRect",
-      ...overrides?.legend,
+      ...(overrides?.legend && typeof overrides.legend === "object" && !Array.isArray(overrides.legend)
+        ? overrides.legend
+        : {}),
     },
-    ...overrides,
+    ...(overrides ?? {}),
   };
 }
 
