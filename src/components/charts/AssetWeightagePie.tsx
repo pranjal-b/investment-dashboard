@@ -1,8 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useAllocationBuckets } from "@/lib/store/dashboardStore";
-import { formatINR } from "@/lib/charts/chartTheme";
+import { useAllocationBuckets, useFormatINR } from "@/lib/store/dashboardStore";
 import { BaseChart } from "./BaseChart";
 
 const COLORS = [
@@ -16,6 +15,7 @@ const COLORS = [
 
 export function AssetWeightagePie() {
   const buckets = useAllocationBuckets();
+  const formatINR = useFormatINR();
   const data = useMemo(
     () =>
       buckets
@@ -111,7 +111,7 @@ export function AssetWeightagePie() {
         },
       ],
     }),
-    [data]
+    [data, formatINR]
   );
 
   if (data.length === 0) {

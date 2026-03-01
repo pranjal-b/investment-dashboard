@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { useFilteredHoldings, useHoldingPeriodReturns } from "@/lib/store/dashboardStore";
-import { formatINR } from "@/lib/charts/chartTheme";
+import { useFilteredHoldings, useHoldingPeriodReturns, useFormatINR } from "@/lib/store/dashboardStore";
 import type { AllocationBucketId } from "@/lib/types";
 
 const BUCKET_ORDER: AllocationBucketId[] = [
@@ -46,6 +45,7 @@ export function HoldingsTabs() {
   const [activeBucket, setActiveBucket] = useState<string>("DirectEquity");
   const holdings = useFilteredHoldings();
   const holdingReturns = useHoldingPeriodReturns();
+  const formatINR = useFormatINR();
   const byBucket = new Map<string, typeof holdings>();
   for (const h of holdings) {
     const b = ASSET_TO_BUCKET[h.assetType] ?? "EquityMF";

@@ -1,8 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { usePortfolioSnapshot } from "@/lib/store/dashboardStore";
-import { formatINR } from "@/lib/charts/chartTheme";
+import { usePortfolioSnapshot, useFormatINR } from "@/lib/store/dashboardStore";
 
 function formatPercent(value: number | null): string {
   if (value === null) return "—";
@@ -11,6 +10,7 @@ function formatPercent(value: number | null): string {
 
 export function TopKPIBar() {
   const snapshot = usePortfolioSnapshot();
+  const formatINR = useFormatINR();
 
   const kpis = [
     { label: "Portfolio Market Value", value: formatINR(snapshot.portfolioMarketValue) },

@@ -139,6 +139,9 @@ export type ValueMode = "absolute" | "percentage";
 
 export type GainFilter = "all" | "gain" | "loss";
 
+/** Display scale for INR: full number (Indian grouping), Lakh, or Crore */
+export type InrScale = "absolute" | "lac" | "cr";
+
 export interface DashboardFilters {
   assetClasses: AssetType[];
   sectors: string[];
@@ -151,4 +154,6 @@ export interface DashboardFilters {
   fy?: string;
   /** Net cash flow window in days (e.g. 30 for last month) */
   netCashFlowDays?: number;
+  /** INR display: absolute (full number), lac (Lakh), cr (Crore) */
+  inrScale?: InrScale;
 }

@@ -37,7 +37,7 @@ export const CHART_COLORS = [
   ASSET_COLORS.ETF,
 ];
 
-/** Indian Rupee with grouping (e.g. ₹12.5 Cr) */
+/** Indian Rupee with grouping (e.g. ₹12.5 Cr) - auto scale */
 export function formatINR(value: number): string {
   const abs = Math.abs(value);
   const sign = value < 0 ? "−" : "";
@@ -45,6 +45,29 @@ export function formatINR(value: number): string {
   if (abs >= 1e5) return `${sign}₹${(abs / 1e5).toFixed(1)} L`;
   if (abs >= 1e3) return `${sign}₹${(abs / 1e3).toFixed(1)} K`;
   return `${sign}₹${abs.toFixed(0)}`;
+}
+
+/** Indian number grouping: 12345678 -> 1,23,45,678 (2,2,3 from left) */
+function indianGrouping(n: number): string {
+  const s = Math.abs(n).toFixed(0);
+  const sign = n < 0 ? "−" : "";
+  if (s.length <= 3) return `${sign}${s}`;
+  const last3 = s.slice(-3);
+  const rest = s.slice(0, -3);
+  const grouped = rest.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + "," + last3;
+  return `${sign}${grouped}`;
+}
+
+/** Format INR with explicit scale: absolute (full), lac (Lakh), cr (Crore) */
+export function formatINRWithScale(
+  value: number,
+  scale: "absolute" | "lac" | "cr"
+): string {
+  const abs = Math.abs(value);
+  const sign = value < 0 ? "−" : "";
+  if (scale === "absolute") return `₹${indianGrouping(value)}`;
+  if (scale === "lac") return `${sign}₹${(abs / 1e5).toFixed(1)} L`;
+  return `${sign}₹${(abs / 1e7).toFixed(1)} Cr`;
 }
 
 /** Percentage, 1 decimal */

@@ -2,15 +2,14 @@
 
 import { useMemo } from "react";
 import ReactECharts from "echarts-for-react";
-import { useSectorExposure } from "@/lib/store/dashboardStore";
-import { useDashboardStore } from "@/lib/store/dashboardStore";
-
-import { CHART_COLORS, createModernTheme, formatINR, formatPct } from "@/lib/charts/chartTheme";
+import { useSectorExposure, useDashboardStore, useFormatINR } from "@/lib/store/dashboardStore";
+import { CHART_COLORS, createModernTheme, formatPct } from "@/lib/charts/chartTheme";
 
 export function SectorTreemap() {
   const sectorExposure = useSectorExposure();
   const setSelectedSector = useDashboardStore((s) => s.setSelectedSector);
   const selectedSector = useDashboardStore((s) => s.filters.selectedSector);
+  const formatINR = useFormatINR();
 
   const children = useMemo(() => {
     const bySector: Record<string, { sector: string; value: number; byType: Record<string, number> }> = {};
@@ -76,7 +75,7 @@ export function SectorTreemap() {
         },
       ],
     };
-  }, [children, sectorExposure]);
+  }, [children, sectorExposure, formatINR]);
 
   const onEvents = useMemo(
     () => ({

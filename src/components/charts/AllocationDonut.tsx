@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo } from "react";
-import { useAllocation } from "@/lib/store/dashboardStore";
-import { ASSET_COLORS, formatINR, SLATE } from "@/lib/charts/chartTheme";
+import { useAllocation, useFormatINR } from "@/lib/store/dashboardStore";
+import { ASSET_COLORS, SLATE } from "@/lib/charts/chartTheme";
 import { BaseChart } from "./BaseChart";
 
 export function AllocationDonut() {
   const allocation = useAllocation();
+  const formatINR = useFormatINR();
 
   const totalValue = useMemo(
     () => allocation.reduce((s, a) => s + a.value, 0),
@@ -80,7 +81,7 @@ export function AllocationDonut() {
         },
       ],
     }),
-    [allocation, totalValue]
+    [allocation, totalValue, formatINR]
   );
 
   if (allocation.length === 0) {

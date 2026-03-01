@@ -2,9 +2,7 @@
 
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { usePortfolioMetrics } from "@/lib/store/dashboardStore";
-import { useDashboardStore } from "@/lib/store/dashboardStore";
-import { formatINR } from "@/lib/charts/chartTheme";
+import { usePortfolioMetrics, useDashboardStore, useFormatINR } from "@/lib/store/dashboardStore";
 
 function formatPercent(value: number | null): string {
   if (value === null) return "—";
@@ -14,6 +12,7 @@ function formatPercent(value: number | null): string {
 export function SummaryCards() {
   const metrics = usePortfolioMetrics();
   const valueMode = useDashboardStore((s) => s.filters.valueMode);
+  const formatINR = useFormatINR();
 
   const cards = useMemo(
     () => [
@@ -55,7 +54,7 @@ export function SummaryCards() {
         variant: metrics.allocationDeviation > 10 ? "negative" : "neutral" as const,
       },
     ],
-    [metrics, valueMode]
+    [metrics, valueMode, formatINR]
   );
 
   return (

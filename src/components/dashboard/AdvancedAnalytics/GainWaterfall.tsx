@@ -2,11 +2,12 @@
 
 import { useMemo } from "react";
 import ReactECharts from "echarts-for-react";
-import { useFilteredHoldings } from "@/lib/store/dashboardStore";
-import { createModernTheme, SEMANTIC, formatINR, SLATE } from "@/lib/charts/chartTheme";
+import { useFilteredHoldings, useFormatINR } from "@/lib/store/dashboardStore";
+import { createModernTheme, SEMANTIC, SLATE } from "@/lib/charts/chartTheme";
 
 export function GainWaterfall() {
   const holdings = useFilteredHoldings();
+  const formatINR = useFormatINR();
 
   const data = useMemo(() => {
     const contributions = holdings
@@ -74,7 +75,7 @@ export function GainWaterfall() {
         },
       ],
     };
-  }, [data]);
+  }, [data, formatINR]);
 
   if (holdings.length === 0) {
     return (

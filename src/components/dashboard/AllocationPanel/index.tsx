@@ -1,8 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { useAllocationBuckets } from "@/lib/store/dashboardStore";
-import { formatINR } from "@/lib/charts/chartTheme";
+import { useAllocationBuckets, useFormatINR } from "@/lib/store/dashboardStore";
 
 function formatPercent(value: number): string {
   return `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
@@ -10,6 +9,7 @@ function formatPercent(value: number): string {
 
 export function AllocationPanel() {
   const buckets = useAllocationBuckets();
+  const formatINR = useFormatINR();
   const filtered = buckets.filter((b) => b.marketValue > 0);
 
   return (

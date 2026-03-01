@@ -5,17 +5,19 @@
  */
 
 import { create } from "zustand";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { subYears } from "date-fns";
 import type {
   Holding,
   PortfolioMetrics,
   AssetAllocation,
   AssetType,
+  InrScale,
   SectorExposure,
   MarketCapExposure,
   DashboardFilters,
 } from "@/lib/types";
+import { formatINRWithScale } from "@/lib/charts/chartTheme";
 import {
   getPortfolioSnapshot,
   getAllocationBuckets,
@@ -48,6 +50,7 @@ const defaultFilters: DashboardFilters = {
   selectedSector: null,
   fy: "2024-25",
   netCashFlowDays: 30,
+  inrScale: "lac",
 };
 
 function applyFilters(holdings: Holding[], filters: DashboardFilters): Holding[] {
@@ -314,4 +317,13 @@ export function useSectorExposure(): SectorExposure[] {
 export function useMarketCapExposure(): MarketCapExposure[] {
   const holdings = useFilteredHoldings();
   return useMemo(() => computeMarketCapExposure(holdings), [holdings]);
+}
+
+/** Format INR using current filter scale (absolute / lac / cr) */
+export function useFormatINR(): (value: number) => string {
+  const inrScale = useDashboardStore((s) => s.filters.inrScale ?? "lac");
+  return useCallback(
+    (value: number) => formatINRWithScale(value, inrScale as InrScale),
+    [inrScale]
+  );
 }
