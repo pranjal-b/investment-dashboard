@@ -6,7 +6,6 @@ import { GlobalFilters } from "@/components/dashboard/GlobalFilters";
 import { SummaryCards } from "@/components/dashboard/KPICards/SummaryCards";
 import { AllocationOverview } from "@/components/dashboard/AllocationOverview";
 import { ExposureAttribution } from "@/components/dashboard/ExposureAttribution";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 const SectorExposureSection = lazy(
   () =>
@@ -38,36 +37,29 @@ export default function InvestmentDashboardPage() {
   }, [setHoldings]);
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/30">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div>
-          <h1 className="text-xl font-semibold tracking-tight">
-            Investment Analytics Dashboard
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Portfolio analytics for Indian markets • Prototype with dummy data
-          </p>
-          </div>
-          <ThemeToggle />
-        </div>
-      </header>
+    <>
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Portfolio Analytics
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Indian markets • Prototype with dummy data
+        </p>
+      </div>
 
-      <main className="container mx-auto px-4 py-6 space-y-8">
-        <GlobalFilters />
-        <SummaryCards />
-        <AllocationOverview />
-        <Suspense fallback={<div className="h-80 animate-pulse rounded-lg bg-muted" />}>
-          <SectorExposureSection />
-        </Suspense>
-        <ExposureAttribution />
-        <Suspense fallback={<div className="h-96 animate-pulse rounded-lg bg-muted" />}>
-          <HoldingsTable />
-        </Suspense>
-        <Suspense fallback={<div className="h-80 animate-pulse rounded-lg bg-muted" />}>
-          <AdvancedAnalytics />
-        </Suspense>
-      </main>
-    </div>
+      <GlobalFilters />
+      <SummaryCards />
+      <AllocationOverview />
+      <Suspense fallback={<div className="h-80 animate-pulse rounded-lg bg-muted" />}>
+        <SectorExposureSection />
+      </Suspense>
+      <ExposureAttribution />
+      <Suspense fallback={<div className="h-96 animate-pulse rounded-lg bg-muted" />}>
+        <HoldingsTable />
+      </Suspense>
+      <Suspense fallback={<div className="h-80 animate-pulse rounded-lg bg-muted" />}>
+        <AdvancedAnalytics />
+      </Suspense>
+    </>
   );
 }
