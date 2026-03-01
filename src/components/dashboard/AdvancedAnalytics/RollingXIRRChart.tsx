@@ -6,6 +6,7 @@ import { useFilteredHoldings } from "@/lib/store/dashboardStore";
 import { subMonths, format } from "date-fns";
 import { aggregateCashflows } from "@/lib/calculations/xirr";
 import xirr from "xirr";
+import { createModernTheme, formatPct, SLATE } from "@/lib/charts/chartTheme";
 
 export function RollingXIRRChart() {
   const holdings = useFilteredHoldings();
@@ -42,48 +43,55 @@ export function RollingXIRRChart() {
     return points;
   }, [holdings]);
 
-  const option = useMemo(
-    () => ({
+  const option = useMemo(() => {
+    const theme = createModernTheme() as Record<string, unknown>;
+    return {
+      ...theme,
       tooltip: {
+        ...(theme.tooltip as object),
         trigger: "axis",
-        formatter: (params: { data: number[]; axisValue: string }[]) =>
-          params
-            .map((p) => `${p.axisValue}: ${(p.data[0] ?? 0).toFixed(2)}%`)
-            .join("<br/>"),
+        formatter: (params: unknown) => {
+          const p = Array.isArray(params) ? params : [];
+          return (p as { data: number[]; axisValue: string }[])
+            .map((x) => `${x.axisValue}: ${formatPct(x.data[0] ?? 0)}`)
+            .join("<br/>");
+        },
       },
       xAxis: {
         type: "category",
         data: rollingData.map((d) => d.date),
+        axisLine: { lineStyle: { color: "rgba(0,0,0,0.08)" } },
+        splitLine: { show: false },
       },
       yAxis: {
         type: "value",
         axisLabel: { formatter: "{value}%" },
+        splitLine: { lineStyle: { color: "rgba(0,0,0,0.05)" } },
       },
       series: [
         {
           type: "line",
           data: rollingData.map((d) => d.xirr),
           smooth: true,
-          areaStyle: { opacity: 0.2 },
+          lineStyle: { color: SLATE[900] },
+          areaStyle: { color: SLATE[900], opacity: 0.08 },
+          symbol: "none",
         },
       ],
-    }),
-    [rollingData]
-  );
+    };
+  }, [rollingData]);
 
   if (rollingData.length < 2) {
     return (
-      <div className="h-[240px] flex items-center justify-center text-muted-foreground text-sm">
+      <div className="flex h-[240px] items-center justify-center rounded-2xl text-sm text-slate-500">
         Insufficient transaction history for rolling XIRR
       </div>
     );
   }
 
   return (
-    <ReactECharts
-      option={option}
-      style={{ height: 240 }}
-      opts={{ renderer: "canvas" }}
-    />
+    <div className="rounded-2xl p-6 min-h-[240px]" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+      <ReactECharts option={option} style={{ height: 240 }} opts={{ renderer: "canvas" }} />
+    </div>
   );
 }

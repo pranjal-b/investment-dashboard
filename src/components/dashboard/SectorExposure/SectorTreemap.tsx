@@ -5,10 +5,7 @@ import ReactECharts from "echarts-for-react";
 import { useSectorExposure } from "@/lib/store/dashboardStore";
 import { useDashboardStore } from "@/lib/store/dashboardStore";
 
-const COLORS = [
-  "#2563eb", "#059669", "#7c3aed", "#dc2626", "#d97706",
-  "#0891b2", "#4f46e5", "#db2777", "#65a30d", "#0d9488",
-];
+import { CHART_COLORS, createModernTheme, formatINR, formatPct } from "@/lib/charts/chartTheme";
 
 export function SectorTreemap() {
   const sectorExposure = useSectorExposure();
@@ -39,7 +36,7 @@ export function SectorTreemap() {
       name: s.sector,
       value: s.value,
       itemStyle: {
-        color: COLORS[i % COLORS.length],
+        color: CHART_COLORS[i % CHART_COLORS.length],
         borderColor: selectedSector === s.sector ? "#fff" : "transparent",
         borderWidth: selectedSector === s.sector ? 2 : 0,
       },
@@ -49,14 +46,17 @@ export function SectorTreemap() {
     }));
   }, [sectorExposure, selectedSector]);
 
-  const option = useMemo(
-    () => ({
+  const option = useMemo(() => {
+    const theme = createModernTheme() as Record<string, unknown>;
+    return {
+      ...theme,
       tooltip: {
+        ...(theme.tooltip as object),
         formatter: (info: { data: { name: string; value: number }; treePathInfo: { name: string }[] }) => {
           const pct = info.treePathInfo.length === 1
             ? sectorExposure.find((s) => s.sector === info.data.name)?.pct ?? 0
             : 0;
-          return `${info.data.name}: ₹${(info.data.value / 1e5).toFixed(1)}L (${pct.toFixed(1)}%)`;
+          return `${info.data.name}: ${formatINR(info.data.value)} (${formatPct(pct)})`;
         },
       },
       series: [
@@ -75,9 +75,8 @@ export function SectorTreemap() {
           emphasis: { focus: "ancestor" },
         },
       ],
-    }),
-    [children, sectorExposure]
-  );
+    };
+  }, [children, sectorExposure]);
 
   const onEvents = useMemo(
     () => ({
@@ -103,11 +102,13 @@ export function SectorTreemap() {
   }
 
   return (
-    <ReactECharts
-      option={option}
-      style={{ height: 320 }}
-      opts={{ renderer: "canvas" }}
-      onEvents={onEvents}
-    />
+    <div className="rounded-2xl p-6 min-h-[280px]" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+      <ReactECharts
+        option={option}
+        style={{ height: 320 }}
+        opts={{ renderer: "canvas" }}
+        onEvents={onEvents}
+      />
+    </div>
   );
 }

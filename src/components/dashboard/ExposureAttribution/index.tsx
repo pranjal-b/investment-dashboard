@@ -29,7 +29,7 @@ export function ExposureAttribution() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Exposure Attribution</h2>
+      <h2 className="text-lg font-semibold text-slate-900">Exposure Attribution</h2>
       <p className="text-sm text-muted-foreground">
         Sector exposure by vehicle (Direct Equity vs Mutual Fund vs AIF vs PMS vs ETF)
       </p>
@@ -61,8 +61,8 @@ export function ExposureAttribution() {
           }
 
           return (
-            <Card key={sector.sector}>
-              <CardHeader>
+            <Card key={sector.sector} className="border-0 shadow-[0_1px_3px_rgba(0,0,0,0.04)] rounded-2xl">
+              <CardHeader className="pb-2">
                 <h3 className="text-sm font-medium">{sector.sector}</h3>
                 <p className="text-2xl font-semibold tabular-nums">
                   {formatPercent(sector.pct)}%

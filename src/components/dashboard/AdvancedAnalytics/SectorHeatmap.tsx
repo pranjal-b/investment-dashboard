@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import ReactECharts from "echarts-for-react";
 import { useSectorExposure } from "@/lib/store/dashboardStore";
 import { useAllocation } from "@/lib/store/dashboardStore";
+import { createModernTheme, SEMANTIC, formatPct } from "@/lib/charts/chartTheme";
 
 export function SectorHeatmap() {
   const sectorExposure = useSectorExposure();
@@ -37,15 +38,18 @@ export function SectorHeatmap() {
     return result;
   }, [sectors, assetTypes, sectorExposure, allocation]);
 
-  const option = useMemo(
-    () => ({
+  const option = useMemo(() => {
+    const theme = createModernTheme() as Record<string, unknown>;
+    return {
+      ...theme,
       tooltip: {
+        ...(theme.tooltip as object),
         position: "top",
         formatter: (params: { value: [number, number, number] }) => {
           const [j, i, val] = params.value;
           const sector = sectors[i];
           const asset = assetTypes[j];
-          return `${sector} / ${asset}: ${val >= 0 ? "+" : ""}${val.toFixed(1)}% vs target`;
+          return `${sector} / ${asset}: ${val >= 0 ? "+" : ""}${formatPct(val)} vs target`;
         },
       },
       grid: { left: 80, top: 40, right: 20, bottom: 60 },
@@ -53,11 +57,13 @@ export function SectorHeatmap() {
         type: "category",
         data: assetTypes,
         splitArea: { show: false },
+        axisLabel: { fontSize: 11 },
       },
       yAxis: {
         type: "category",
         data: sectors,
         splitArea: { show: false },
+        axisLabel: { fontSize: 11 },
       },
       visualMap: {
         min: -5,
@@ -67,7 +73,7 @@ export function SectorHeatmap() {
         left: "center",
         bottom: 0,
         inRange: {
-          color: ["#dc2626", "#fef3c7", "#059669"],
+          color: [SEMANTIC.negative, "#e2e8f0", SEMANTIC.positive],
         },
       },
       series: [
@@ -75,14 +81,11 @@ export function SectorHeatmap() {
           type: "heatmap",
           data,
           label: { show: false },
-          emphasis: {
-            itemStyle: { shadowBlur: 10, shadowColor: "rgba(0,0,0,0.5)" },
-          },
+          emphasis: { itemStyle: { shadowBlur: 4 } },
         },
       ],
-    }),
-    [data, sectors, assetTypes]
-  );
+    };
+  }, [data, sectors, assetTypes]);
 
   if (sectorExposure.length === 0 || allocation.length === 0) {
     return (
@@ -93,10 +96,8 @@ export function SectorHeatmap() {
   }
 
   return (
-    <ReactECharts
-      option={option}
-      style={{ height: 280 }}
-      opts={{ renderer: "canvas" }}
-    />
+    <div className="rounded-2xl p-6 min-h-[280px]" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+      <ReactECharts option={option} style={{ height: 280 }} opts={{ renderer: "canvas" }} />
+    </div>
   );
 }

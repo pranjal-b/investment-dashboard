@@ -4,19 +4,11 @@ import { useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { usePortfolioMetrics } from "@/lib/store/dashboardStore";
 import { useDashboardStore } from "@/lib/store/dashboardStore";
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-    minimumFractionDigits: 0,
-  }).format(value);
-}
+import { formatINR } from "@/lib/charts/chartTheme";
 
 function formatPercent(value: number | null): string {
   if (value === null) return "—";
-  return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
+  return `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
 }
 
 export function SummaryCards() {
@@ -29,25 +21,25 @@ export function SummaryCards() {
         title: "Total Investment",
         value:
           valueMode === "absolute"
-            ? formatCurrency(metrics.totalInvested)
+            ? formatINR(metrics.totalInvested)
             : "100%",
-        subValue: valueMode === "percentage" ? formatCurrency(metrics.totalInvested) : undefined,
+        subValue: valueMode === "percentage" ? formatINR(metrics.totalInvested) : undefined,
       },
       {
         title: "Current Value",
         value:
           valueMode === "absolute"
-            ? formatCurrency(metrics.currentValue)
+            ? formatINR(metrics.currentValue)
             : `${((metrics.currentValue / metrics.totalInvested) * 100).toFixed(1)}%`,
-        subValue: valueMode === "percentage" ? formatCurrency(metrics.currentValue) : undefined,
+        subValue: valueMode === "percentage" ? formatINR(metrics.currentValue) : undefined,
       },
       {
         title: "Absolute Gain/Loss",
         value:
           valueMode === "absolute"
-            ? formatCurrency(metrics.absoluteGain)
+            ? formatINR(metrics.absoluteGain)
             : formatPercent(metrics.gainPercent),
-        subValue: valueMode === "percentage" ? formatCurrency(metrics.absoluteGain) : formatPercent(metrics.gainPercent),
+        subValue: valueMode === "percentage" ? formatINR(metrics.absoluteGain) : formatPercent(metrics.gainPercent),
         variant: metrics.absoluteGain >= 0 ? "positive" : "negative" as const,
       },
       {
@@ -69,7 +61,7 @@ export function SummaryCards() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
       {cards.map((card) => (
-        <Card key={card.title} className="transition-colors">
+        <Card key={card.title} className="border-0 shadow-[0_1px_3px_rgba(0,0,0,0.04)] rounded-2xl transition-colors">
           <CardHeader className="pb-2">
             <h3 className="text-sm font-medium text-muted-foreground">
               {card.title}

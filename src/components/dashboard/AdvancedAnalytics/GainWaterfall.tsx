@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import ReactECharts from "echarts-for-react";
 import { useFilteredHoldings } from "@/lib/store/dashboardStore";
+import { createModernTheme, SEMANTIC, formatINR, SLATE } from "@/lib/charts/chartTheme";
 
 export function GainWaterfall() {
   const holdings = useFilteredHoldings();
@@ -25,72 +26,67 @@ export function GainWaterfall() {
         name: c.name,
         value: c.value,
         itemStyle: {
-          color: c.value >= 0 ? "#059669" : "#dc2626",
+          color: c.value >= 0 ? SEMANTIC.positive : SEMANTIC.negative,
         },
       })),
       {
         name: "Total",
         value: totalGain,
-        itemStyle: { color: totalGain >= 0 ? "#2563eb" : "#dc2626" },
+        itemStyle: { color: totalGain >= 0 ? SLATE[900] : SEMANTIC.negative },
       },
     ];
 
     return waterfall;
   }, [holdings]);
 
-  const option = useMemo(
-    () => ({
+  const option = useMemo(() => {
+    const theme = createModernTheme() as Record<string, unknown>;
+    return {
+      ...theme,
       tooltip: {
+        ...(theme.tooltip as object),
         trigger: "axis",
-        formatter: (params: { data: number[]; axisValue: string }[]) =>
-          params
-            .map((p) => {
-              const val = p.data[0] ?? 0;
-              return `${p.axisValue}: ₹${(val / 1e5).toFixed(1)}L`;
-            })
-            .join("<br/>"),
+        formatter: (params: unknown) => {
+          const p = Array.isArray(params) ? params : [];
+          return (p as { data: number[]; axisValue: string }[])
+            .map((x) => `${x.axisValue}: ${formatINR(x.data[0] ?? 0)}`)
+            .join("<br/>");
+        },
       },
       xAxis: {
         type: "category",
         data: data.map((d) => d.name),
-        axisLabel: {
-          rotate: 45,
-          interval: 0,
-        },
+        axisLabel: { rotate: 45, interval: 0, fontSize: 11 },
+        axisLine: { lineStyle: { color: "rgba(0,0,0,0.08)" } },
+        splitLine: { show: false },
       },
       yAxis: {
         type: "value",
-        axisLabel: {
-          formatter: (v: number) => `₹${(v / 1e5).toFixed(0)}L`,
-        },
+        axisLabel: { formatter: (v: number) => formatINR(v) },
+        splitLine: { lineStyle: { color: "rgba(0,0,0,0.05)" } },
       },
       series: [
         {
           type: "bar",
-          data: data.map((d) => ({
-            value: d.value,
-            itemStyle: d.itemStyle,
-          })),
-          barWidth: "60%",
+          data: data.map((d) => ({ value: d.value, itemStyle: d.itemStyle })),
+          barWidth: "56%",
+          itemStyle: { borderRadius: [4, 4, 0, 0] },
         },
       ],
-    }),
-    [data]
-  );
+    };
+  }, [data]);
 
   if (holdings.length === 0) {
     return (
-      <div className="h-[240px] flex items-center justify-center text-muted-foreground text-sm">
+      <div className="flex h-[240px] items-center justify-center rounded-2xl text-sm text-slate-500">
         No data
       </div>
     );
   }
 
   return (
-    <ReactECharts
-      option={option}
-      style={{ height: 280 }}
-      opts={{ renderer: "canvas" }}
-    />
+    <div className="rounded-2xl p-6 min-h-[280px]" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+      <ReactECharts option={option} style={{ height: 280 }} opts={{ renderer: "canvas" }} />
+    </div>
   );
 }
