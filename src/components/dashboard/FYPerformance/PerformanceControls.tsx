@@ -86,7 +86,10 @@ export function PerformanceControls() {
           <span className={LABEL_CLASS}>View by</span>
           <Select
             value={performanceViewBy}
-            onValueChange={(v) => setFilters({ performanceViewBy: v })}
+            onValueChange={(v) =>
+              setFilters({
+                performanceViewBy: v as "portfolio" | "assetClass" | "vehicle",
+              })}
           >
             <SelectTrigger className={SELECT_TRIGGER_CLASS + " w-[10rem]"}>
               <SelectValue placeholder="View by" />
