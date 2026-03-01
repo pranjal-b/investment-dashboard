@@ -129,7 +129,10 @@ export function PerformanceControls() {
           <span className={LABEL_CLASS}>Frequency</span>
           <Select
             value={performanceFrequency}
-            onValueChange={(v) => setFilters({ performanceFrequency: v })}
+            onValueChange={(v) =>
+              setFilters({
+                performanceFrequency: v as "mom" | "qoq" | "yoy",
+              })}
           >
             <SelectTrigger className={SELECT_TRIGGER_CLASS + " w-[7rem]"}>
               <SelectValue placeholder="Frequency" />
@@ -213,7 +216,10 @@ export function PerformanceControls() {
           </div>
           <Select
             value={performanceYAxisMode}
-            onValueChange={(v) => setFilters({ performanceYAxisMode: v })}
+            onValueChange={(v) =>
+              setFilters({
+                performanceYAxisMode: v as "value" | "return" | "indexed",
+              })}
           >
             <SelectTrigger className={SELECT_TRIGGER_CLASS + " w-[9rem]"}>
               <SelectValue placeholder="Y-axis" />
