@@ -25,38 +25,38 @@ export function TopKPIBar() {
       : null;
 
   // —— Row 1 (Primary): Wealth → Profitability → Performance ——
-  const row1 = [
+  const row1: KpiItem[] = [
     { label: "Portfolio Market Value", value: formatINR(snapshot.portfolioMarketValue) },
     { label: "Total Invested Capital", value: formatINR(snapshot.totalCostValue) },
     {
       label: "Absolute Gain",
       value: formatINR(snapshot.absoluteGainRs),
       sub: formatPercent(snapshot.absoluteGainPct),
-      variant: snapshot.absoluteGainRs >= 0 ? "positive" : "negative",
+      variant: (snapshot.absoluteGainRs >= 0 ? "positive" : "negative") as "positive" | "negative",
     },
     {
       label: "Portfolio XIRR",
       value: formatPercent(snapshot.portfolioXIRR),
-      variant: (snapshot.portfolioXIRR ?? 0) >= 0 ? "positive" : "negative",
+      variant: ((snapshot.portfolioXIRR ?? 0) >= 0 ? "positive" : "negative") as "positive" | "negative",
     },
     {
       label: "Alpha (vs Benchmark)",
       value: formatPercent(alphaPct),
-      variant: (alphaPct ?? 0) >= 0 ? "positive" : "negative",
+      variant: ((alphaPct ?? 0) >= 0 ? "positive" : "negative") as "positive" | "negative",
     },
   ];
 
   // —— Row 2 (Secondary): Unrealized, Realized, Cash, Benchmark, Peer ——
-  const row2 = [
+  const row2: KpiItem[] = [
     {
       label: "Unrealized Gain",
       value: formatINR(snapshot.unrealizedGain),
-      variant: snapshot.unrealizedGain >= 0 ? "positive" : "negative",
+      variant: (snapshot.unrealizedGain >= 0 ? "positive" : "negative") as "positive" | "negative",
     },
     {
       label: "Realized Gain",
       value: formatINR(snapshot.realizedGain),
-      variant: snapshot.realizedGain >= 0 ? "positive" : "negative",
+      variant: (snapshot.realizedGain >= 0 ? "positive" : "negative") as "positive" | "negative",
     },
     { label: "Net Cash Flow (Last Month)", value: formatINR(snapshot.netCashFlowLastMonth) },
     { label: "Benchmark", value: formatPercent(snapshot.benchmarkXIRR) },
