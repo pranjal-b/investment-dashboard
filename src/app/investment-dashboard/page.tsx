@@ -55,15 +55,6 @@ export default function InvestmentDashboardPage() {
 
   return (
     <>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Portfolio Analytics
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Indian markets • Prototype with dummy data
-        </p>
-      </div>
-
       <GlobalFilters />
       <div className="space-y-4">
         <TopKPIBar />
