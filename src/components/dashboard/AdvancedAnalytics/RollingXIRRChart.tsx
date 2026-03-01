@@ -2,53 +2,28 @@
 
 import { useMemo } from "react";
 import ReactECharts from "echarts-for-react";
-import { useFilteredHoldings } from "@/lib/store/dashboardStore";
-import { subMonths, format } from "date-fns";
-import { aggregateCashflows } from "@/lib/calculations/xirr";
-import xirr from "xirr";
-import { createModernTheme, formatPct, SLATE } from "@/lib/charts/chartTheme";
+import { useRollingPerformance } from "@/lib/store/dashboardStore";
+import { createModernTheme, formatPct } from "@/lib/charts/chartTheme";
+import { SLATE } from "@/lib/charts/chartTheme";
 
 export function RollingXIRRChart() {
-  const holdings = useFilteredHoldings();
+  const series = useRollingPerformance();
 
-  const rollingData = useMemo(() => {
-    const cashflows = aggregateCashflows(holdings).map((c) => ({
-      amount: c.amount,
-      when: new Date(c.date),
-    }));
-
-    if (cashflows.length < 2) return [];
-
-    const endDate = new Date();
-    const startDate = subMonths(endDate, 24);
-    const points: { date: string; xirr: number }[] = [];
-
-    let d = new Date(startDate);
-    while (d <= endDate) {
-      const filtered = cashflows.filter((c) => c.when <= d);
-      if (filtered.length >= 2) {
-        try {
-          const rate = xirr(filtered);
-          points.push({
-            date: format(d, "yyyy-MM"),
-            xirr: rate * 100,
-          });
-        } catch {
-          points.push({ date: format(d, "yyyy-MM"), xirr: 0 });
-        }
-      }
-      d = new Date(d.getFullYear(), d.getMonth() + 1, d.getDate());
-    }
-
-    return points;
-  }, [holdings]);
+  const rollingData = useMemo(
+    () =>
+      series.map((p) => ({
+        date: p.date,
+        xirr: p.rolling1YXIRR ?? 0,
+      })),
+    [series]
+  );
 
   const option = useMemo(() => {
     const theme = createModernTheme() as Record<string, unknown>;
     return {
       ...theme,
       tooltip: {
-        ...(theme.tooltip as object),
+        ...(typeof theme.tooltip === "object" && theme.tooltip && !Array.isArray(theme.tooltip) ? theme.tooltip : {}),
         trigger: "axis",
         formatter: (params: unknown) => {
           const p = Array.isArray(params) ? params : [];

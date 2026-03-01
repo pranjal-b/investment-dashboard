@@ -251,6 +251,10 @@
       "currentValue": 565000,
       "targetAllocationPct": 18,
       "benchmark": "Nifty 500",
+      "ter": 0.85,
+      "isDirect": true,
+      "isActive": true,
+      "wealthManagerId": "wm-hdfc",
       "sectorSplit": { "Banking": 15, "IT": 22, "Pharma": 8, "FMCG": 12, "Energy": 18, "Auto": 6, "Infra": 10, "CapitalGoods": 9 },
       "transactions": [
         { "date": "2021-12-10", "amount": -200000, "type": "buy" },
@@ -269,6 +273,10 @@
       "currentValue": 425000,
       "targetAllocationPct": 14,
       "benchmark": "Nifty 50",
+      "ter": 0.65,
+      "isDirect": false,
+      "isActive": true,
+      "wealthManagerId": "wm-icici",
       "sectorSplit": { "Banking": 25, "IT": 20, "FMCG": 12, "Energy": 15, "Auto": 8, "Pharma": 8, "Infra": 12 },
       "transactions": [
         { "date": "2022-02-01", "amount": -200000, "type": "buy" },
@@ -348,6 +356,10 @@
       "currentValue": 312000,
       "targetAllocationPct": 10,
       "benchmark": "Nifty 50",
+      "ter": 0.12,
+      "isDirect": true,
+      "isIndexed": true,
+      "isActive": false,
       "sectorSplit": { "Banking": 18, "IT": 15, "Energy": 14, "FMCG": 10, "Auto": 8, "Pharma": 6, "Infra": 12, "CapitalGoods": 10, "Chemicals": 4, "Consumption": 3 },
       "transactions": [
         { "date": "2022-01-10", "amount": -140000, "type": "buy" },
@@ -364,6 +376,8 @@
       "currentValue": 1180000,
       "targetAllocationPct": 25,
       "benchmark": "Nifty 50",
+      "lockInPct": 30,
+      "wealthManagerId": "wm-motilal",
       "sectorSplit": { "Banking": 20, "IT": 22, "FMCG": 12, "Energy": 15, "Pharma": 8, "Auto": 8, "Infra": 10, "CapitalGoods": 5 },
       "transactions": [
         { "date": "2021-11-01", "amount": -500000, "type": "buy" },
@@ -397,6 +411,7 @@
       "currentValue": 875000,
       "targetAllocationPct": 18,
       "benchmark": "Nifty 500",
+      "wealthManagerId": "wm-iifl",
       "sectorSplit": { "Banking": 18, "IT": 20, "FMCG": 10, "Energy": 14, "Pharma": 8, "Auto": 7, "Infra": 12, "CapitalGoods": 8, "Consumption": 3 },
       "transactions": [
         { "date": "2022-01-15", "amount": -375000, "type": "buy" },

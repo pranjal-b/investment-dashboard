@@ -94,6 +94,8 @@ export function computeSectorExposure(
     AIF: 0,
     PMS: 0,
     ETF: 0,
+    DebtMF: 0,
+    IndexFund: 0,
   });
 
   for (const h of holdings) {
@@ -170,5 +172,7 @@ export function computeExposureByVehicle(
     AIF: 0,
     PMS: 0,
     ETF: 0,
+    DebtMF: 0,
+    IndexFund: 0,
   };
 }

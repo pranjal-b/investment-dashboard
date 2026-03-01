@@ -3,7 +3,25 @@
  * Indian market context
  */
 
-export type AssetType = "Equity" | "MutualFund" | "AIF" | "PMS" | "ETF";
+export type AssetType =
+  | "Equity"
+  | "MutualFund"
+  | "AIF"
+  | "PMS"
+  | "ETF"
+  | "DebtMF"
+  | "IndexFund";
+
+/** Bucket IDs for allocation (Direct Equity, Equity MF, Debt MF, Alt FOF, PMS, AIF, ETF, Index) */
+export type AllocationBucketId =
+  | "DirectEquity"
+  | "EquityMF"
+  | "DebtMF"
+  | "AlternativeFOF"
+  | "PMS"
+  | "AIF"
+  | "ETF"
+  | "IndexFund";
 
 export type MarketCap = "Large" | "Mid" | "Small";
 
@@ -28,6 +46,8 @@ export const ASSET_TYPES: AssetType[] = [
   "AIF",
   "PMS",
   "ETF",
+  "DebtMF",
+  "IndexFund",
 ];
 
 export const MARKET_CAPS: MarketCap[] = ["Large", "Mid", "Small"];
@@ -36,11 +56,24 @@ export interface Transaction {
   date: string; // ISO format
   amount: number; // negative = outflow, positive = inflow
   type: "buy" | "sell" | "dividend" | "nav";
+  realizedGain?: number; // for sell transactions
 }
 
 export interface BenchmarkHistoryPoint {
   date: string;
   value: number;
+}
+
+/** Historical return or index level series (e.g. Nifty 50, peer) for benchmark XIRR */
+export interface ReturnSeriesPoint {
+  date: string;
+  value: number; // index level or cumulative return factor
+}
+
+/** Per-scheme NAV history for period returns and rolling metrics */
+export interface NavSeriesPoint {
+  date: string;
+  nav: number;
 }
 
 export interface Holding {
@@ -57,6 +90,19 @@ export interface Holding {
   transactions: Transaction[];
   historicalNav?: { date: string; value: number }[]; // For rolling XIRR
   benchmarkHistory?: BenchmarkHistoryPoint[];
+  // Extended fields for HNI platform
+  costValue?: number; // for FIFO/realized
+  wealthManagerId?: string;
+  ter?: number; // expense ratio
+  lockInPct?: number;
+  isDirect?: boolean;
+  isIndexed?: boolean;
+  isActive?: boolean;
+  creditRating?: string; // debt: AAA, AA, etc.
+  modifiedDuration?: number;
+  ytm?: number;
+  firstNavDate?: string;
+  inceptionDate?: string;
 }
 
 export interface PortfolioMetrics {
@@ -101,4 +147,8 @@ export interface DashboardFilters {
   valueMode: ValueMode;
   gainFilter: GainFilter;
   selectedSector: string | null; // For drilldown
+  /** FY for performance screen e.g. "2024-25" (Apr–Mar) */
+  fy?: string;
+  /** Net cash flow window in days (e.g. 30 for last month) */
+  netCashFlowDays?: number;
 }

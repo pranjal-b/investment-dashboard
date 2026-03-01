@@ -4,12 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, BarChart3, ChevronLeft } from "lucide-react";
+import { LayoutDashboard, BarChart3, Calendar, Shield, ChevronLeft } from "lucide-react";
 import { useState } from "react";
 
 const navItems = [
-  { href: "/investment-dashboard", label: "Analytics", icon: BarChart3 },
   { href: "/investment-dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/investment-dashboard/fy", label: "FY Performance", icon: Calendar },
+  { href: "/investment-dashboard#compliance", label: "Compliance", icon: Shield },
+  { href: "/investment-dashboard", label: "Analytics", icon: BarChart3 },
 ];
 
 export function SidebarNavContent({ onItemClick }: { onItemClick?: () => void }) {
