@@ -107,7 +107,7 @@ export interface Holding {
   portfolioType?: "Core" | "New" | "Old";
 }
 
-/** Portfolio filter: which portfolio to show (Core / New / Old) */
+/** Portfolio filter: Core, Satellite (= New), Legacy (= Old) */
 export type PortfolioFilter = "all" | "Core" | "New" | "Old";
 
 export interface PortfolioMetrics {
@@ -147,8 +147,22 @@ export type GainFilter = "all" | "gain" | "loss";
 /** Display scale for INR: full number (Indian grouping), Lakh, or Crore */
 export type InrScale = "absolute" | "lac" | "cr";
 
-/** Primary asset class for toggle filter (single-select) */
-export type PrimaryAssetClass = "all" | "equity" | "mf" | "pms" | "aif" | "etf";
+/** Scope: Asset class bucket — All | Equity | Debt | Alternatives | Cash */
+export type ScopeAssetClass = "all" | "equity" | "debt" | "alternatives" | "cash";
+
+/** Vehicle: All | Direct | MF | PMS | AIF | ETF | Index | FOF */
+export type VehicleFilter =
+  | "all"
+  | "direct"
+  | "mf"
+  | "pms"
+  | "aif"
+  | "etf"
+  | "index"
+  | "fof";
+
+/** Date range preset: FY | YTD | 3M | 6M | 1Y | Custom */
+export type DateRangePreset = "fy" | "ytd" | "3m" | "6m" | "1y" | "custom";
 
 export interface DashboardFilters {
   assetClasses: AssetType[];
@@ -158,13 +172,17 @@ export interface DashboardFilters {
   valueMode: ValueMode;
   gainFilter: GainFilter;
   selectedSector: string | null; // For drilldown
-  /** Primary row toggle: All | Equity | MF | PMS | AIF | ETF */
-  primaryAssetClass?: PrimaryAssetClass;
-  /** Multi-select: bucket ids (equity, debt, alternatives, cash) */
+  /** Scope: All | Equity | Debt | Alternatives | Cash */
+  scopeAssetClass?: ScopeAssetClass;
+  /** Vehicle: All | Direct | MF | PMS | AIF | ETF | Index | FOF */
+  vehicleFilter?: VehicleFilter;
+  /** Date range preset; when "custom", dateRange is user-defined */
+  dateRangePreset?: DateRangePreset;
+  /** Multi-select: bucket ids (legacy) */
   coreBucketSelection?: string[];
-  /** Multi-select: sub-category option values (e.g. direct-stocks, aif); filtered by selected buckets */
+  /** Multi-select: sub-category option values (legacy) */
   coreSubCategorySelection?: string[];
-  /** Portfolio filter: Core, New, or Old */
+  /** Portfolio: All | Core | Satellite (New) | Legacy (Old) */
   portfolioFilter?: PortfolioFilter;
   /** FY for performance screen e.g. "2024-25" (Apr–Mar) */
   fy?: string;

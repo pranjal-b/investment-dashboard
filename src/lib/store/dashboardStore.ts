@@ -6,7 +6,8 @@
 
 import { create } from "zustand";
 import { useCallback, useMemo } from "react";
-import { subYears } from "date-fns";
+import { subYears, subMonths, startOfYear } from "date-fns";
+import type { DateRangePreset } from "@/lib/types";
 import type {
   Holding,
   PortfolioMetrics,
@@ -36,10 +37,32 @@ import {
 } from "@/lib/calculations/exposure";
 import { getAssetTypesForCoreOption } from "@/lib/coreBuckets";
 
-const defaultDateRange: [Date, Date] = [
-  subYears(new Date(), 3),
-  new Date(),
-];
+const now = () => new Date();
+
+/** Compute date range for a preset (Indian FY = Apr–Mar) */
+export function getDateRangeForPreset(preset: DateRangePreset): [Date, Date] {
+  const end = now();
+  switch (preset) {
+    case "fy": {
+      const y = end.getFullYear();
+      const start = new Date(y, 3, 1); // Apr 1
+      if (end < start) return [new Date(y - 1, 3, 1), end];
+      return [start, end];
+    }
+    case "ytd":
+      return [startOfYear(end), end];
+    case "3m":
+      return [subMonths(end, 3), end];
+    case "6m":
+      return [subMonths(end, 6), end];
+    case "1y":
+      return [subYears(end, 1), end];
+    default:
+      return [subYears(end, 1), end];
+  }
+}
+
+const defaultDateRange: [Date, Date] = getDateRangeForPreset("1y");
 
 const defaultFilters: DashboardFilters = {
   assetClasses: [],
@@ -49,7 +72,9 @@ const defaultFilters: DashboardFilters = {
   valueMode: "absolute",
   gainFilter: "all",
   selectedSector: null,
-  primaryAssetClass: "all",
+  scopeAssetClass: "all",
+  vehicleFilter: "all",
+  dateRangePreset: "1y",
   coreBucketSelection: [],
   coreSubCategorySelection: [],
   portfolioFilter: "all",
@@ -58,40 +83,62 @@ const defaultFilters: DashboardFilters = {
   inrScale: "lac",
 };
 
-/** Asset types for primary asset class toggle */
-const PRIMARY_ASSET_CLASS_TYPES: Record<string, AssetType[]> = {
-  equity: ["Equity"],
+/** Scope bucket id → asset types (via coreBuckets) */
+function getScopeAssetTypes(scope: string): AssetType[] {
+  if (scope === "all") return [];
+  return getAssetTypesForCoreOption(scope) ?? [];
+}
+
+/** Vehicle → asset types */
+const VEHICLE_ASSET_TYPES: Record<string, AssetType[]> = {
+  direct: ["Equity"],
   mf: ["MutualFund", "DebtMF"],
   pms: ["PMS"],
   aif: ["AIF"],
-  etf: ["ETF", "IndexFund"],
+  etf: ["ETF"],
+  index: ["IndexFund"],
+  fof: ["MutualFund", "AIF"], // FOF can be MF or AIF
 };
 
 function applyFilters(holdings: Holding[], filters: DashboardFilters): Holding[] {
   let result = [...holdings];
 
-  const primary = filters.primaryAssetClass ?? "all";
-  if (primary !== "all") {
-    const types = PRIMARY_ASSET_CLASS_TYPES[primary];
-    if (types?.length) {
-      const set = new Set(types);
-      result = result.filter((h) => set.has(h.assetType));
+  const scope = filters.scopeAssetClass ?? "all";
+  const vehicle = filters.vehicleFilter ?? "all";
+  const scopeTypes = getScopeAssetTypes(scope);
+  const vehicleTypes = vehicle === "all" ? [] : (VEHICLE_ASSET_TYPES[vehicle] ?? []);
+
+  if (scopeTypes.length > 0 || vehicleTypes.length > 0) {
+    const allowed = new Set<AssetType>();
+    if (scopeTypes.length > 0 && vehicleTypes.length > 0) {
+      for (const t of scopeTypes) {
+        if (vehicleTypes.includes(t)) allowed.add(t);
+      }
+    } else if (scopeTypes.length > 0) {
+      scopeTypes.forEach((t) => allowed.add(t));
+    } else {
+      vehicleTypes.forEach((t) => allowed.add(t));
+    }
+    if (allowed.size > 0) {
+      result = result.filter((h) => allowed.has(h.assetType));
+    } else {
+      result = [];
     }
   } else {
     const bucketSelection = filters.coreBucketSelection ?? [];
     const subSelection = filters.coreSubCategorySelection ?? [];
     if (subSelection.length > 0) {
-    const allowedTypes = new Set<import("@/lib/types").AssetType>();
-    for (const v of subSelection) {
-      for (const t of getAssetTypesForCoreOption(v)) allowedTypes.add(t);
-    }
-    if (allowedTypes.size > 0) {
-      result = result.filter((h) => allowedTypes.has(h.assetType));
-    } else {
-      result = [];
-    }
+      const allowedTypes = new Set<AssetType>();
+      for (const v of subSelection) {
+        for (const t of getAssetTypesForCoreOption(v)) allowedTypes.add(t);
+      }
+      if (allowedTypes.size > 0) {
+        result = result.filter((h) => allowedTypes.has(h.assetType));
+      } else {
+        result = [];
+      }
     } else if (bucketSelection.length > 0) {
-      const allowedTypes = new Set<import("@/lib/types").AssetType>();
+      const allowedTypes = new Set<AssetType>();
       for (const b of bucketSelection) {
         for (const t of getAssetTypesForCoreOption(b)) allowedTypes.add(t);
       }

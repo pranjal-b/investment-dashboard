@@ -17,7 +17,7 @@ export function SummaryCards() {
   const cards = useMemo(
     () => [
       {
-        title: "Total Investment",
+        title: "Total Invested Capital",
         value:
           valueMode === "absolute"
             ? formatINR(metrics.totalInvested)
