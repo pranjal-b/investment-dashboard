@@ -147,6 +147,9 @@ export type GainFilter = "all" | "gain" | "loss";
 /** Display scale for INR: full number (Indian grouping), Lakh, or Crore */
 export type InrScale = "absolute" | "lac" | "cr";
 
+/** Primary asset class for toggle filter (single-select) */
+export type PrimaryAssetClass = "all" | "equity" | "mf" | "pms" | "aif" | "etf";
+
 export interface DashboardFilters {
   assetClasses: AssetType[];
   sectors: string[];
@@ -155,6 +158,8 @@ export interface DashboardFilters {
   valueMode: ValueMode;
   gainFilter: GainFilter;
   selectedSector: string | null; // For drilldown
+  /** Primary row toggle: All | Equity | MF | PMS | AIF | ETF */
+  primaryAssetClass?: PrimaryAssetClass;
   /** Multi-select: bucket ids (equity, debt, alternatives, cash) */
   coreBucketSelection?: string[];
   /** Multi-select: sub-category option values (e.g. direct-stocks, aif); filtered by selected buckets */

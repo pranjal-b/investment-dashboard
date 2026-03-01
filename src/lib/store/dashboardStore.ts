@@ -49,6 +49,7 @@ const defaultFilters: DashboardFilters = {
   valueMode: "absolute",
   gainFilter: "all",
   selectedSector: null,
+  primaryAssetClass: "all",
   coreBucketSelection: [],
   coreSubCategorySelection: [],
   portfolioFilter: "all",
@@ -57,12 +58,29 @@ const defaultFilters: DashboardFilters = {
   inrScale: "lac",
 };
 
+/** Asset types for primary asset class toggle */
+const PRIMARY_ASSET_CLASS_TYPES: Record<string, AssetType[]> = {
+  equity: ["Equity"],
+  mf: ["MutualFund", "DebtMF"],
+  pms: ["PMS"],
+  aif: ["AIF"],
+  etf: ["ETF", "IndexFund"],
+};
+
 function applyFilters(holdings: Holding[], filters: DashboardFilters): Holding[] {
   let result = [...holdings];
 
-  const bucketSelection = filters.coreBucketSelection ?? [];
-  const subSelection = filters.coreSubCategorySelection ?? [];
-  if (subSelection.length > 0) {
+  const primary = filters.primaryAssetClass ?? "all";
+  if (primary !== "all") {
+    const types = PRIMARY_ASSET_CLASS_TYPES[primary];
+    if (types?.length) {
+      const set = new Set(types);
+      result = result.filter((h) => set.has(h.assetType));
+    }
+  } else {
+    const bucketSelection = filters.coreBucketSelection ?? [];
+    const subSelection = filters.coreSubCategorySelection ?? [];
+    if (subSelection.length > 0) {
     const allowedTypes = new Set<import("@/lib/types").AssetType>();
     for (const v of subSelection) {
       for (const t of getAssetTypesForCoreOption(v)) allowedTypes.add(t);
@@ -72,15 +90,16 @@ function applyFilters(holdings: Holding[], filters: DashboardFilters): Holding[]
     } else {
       result = [];
     }
-  } else if (bucketSelection.length > 0) {
-    const allowedTypes = new Set<import("@/lib/types").AssetType>();
-    for (const b of bucketSelection) {
-      for (const t of getAssetTypesForCoreOption(b)) allowedTypes.add(t);
-    }
-    if (allowedTypes.size > 0) {
-      result = result.filter((h) => allowedTypes.has(h.assetType));
-    } else {
-      result = [];
+    } else if (bucketSelection.length > 0) {
+      const allowedTypes = new Set<import("@/lib/types").AssetType>();
+      for (const b of bucketSelection) {
+        for (const t of getAssetTypesForCoreOption(b)) allowedTypes.add(t);
+      }
+      if (allowedTypes.size > 0) {
+        result = result.filter((h) => allowedTypes.has(h.assetType));
+      } else {
+        result = [];
+      }
     }
   }
   if (filters.assetClasses.length > 0) {
