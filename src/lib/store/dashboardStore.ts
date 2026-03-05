@@ -93,7 +93,7 @@ const defaultFilters: DashboardFilters = {
   performanceMatrixScenario: "moderate",
   netCashFlowDays: 30,
   reportingCurrency: "INR",
-  reportingUnits: "lac",
+  reportingUnits: "cr",
 };
 
 /** Scope bucket id → asset types (via coreBuckets) */
@@ -779,7 +779,7 @@ export function useMarketCapExposure(): MarketCapExposure[] {
 /** Format value using current reporting units (absolute / lac / cr / million / billion) */
 export function useFormatINR(): (value: number) => string {
   const reportingUnits = useDashboardStore(
-    (s) => s.filters.reportingUnits ?? s.filters.inrScale ?? "lac"
+    (s) => s.filters.reportingUnits ?? s.filters.inrScale ?? "cr"
   ) as ReportingUnits;
   return useCallback(
     (value: number) => formatINRWithScale(value, reportingUnits),

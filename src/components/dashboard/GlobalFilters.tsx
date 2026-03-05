@@ -93,7 +93,7 @@ export function GlobalFilters() {
   const marketCapValue =
     filters.marketCaps.length === 0 ? "all" : (filters.marketCaps[0] as "all" | "Large" | "Mid" | "Small");
   const reportingCurrency = (filters.reportingCurrency ?? "INR") as ReportingCurrency;
-  const reportingUnits = (filters.reportingUnits ?? filters.inrScale ?? "lac") as ReportingUnits;
+  const reportingUnits = (filters.reportingUnits ?? filters.inrScale ?? "cr") as ReportingUnits;
 
   const hasActiveFilters =
     scopeAssetClass !== "all" ||
@@ -102,7 +102,7 @@ export function GlobalFilters() {
     filters.sectors.length > 0 ||
     filters.marketCaps.length > 0 ||
     (filters.reportingCurrency && filters.reportingCurrency !== "INR") ||
-    (filters.reportingUnits && filters.reportingUnits !== "lac");
+    (filters.reportingUnits && filters.reportingUnits !== "cr");
 
   const filterSummaryParts = useMemo(() => {
     const parts: string[] = [];
