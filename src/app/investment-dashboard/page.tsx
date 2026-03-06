@@ -8,6 +8,7 @@ import { TopKPIBar } from "@/components/dashboard/TopKPIBar";
 import { PerformanceMatrix } from "@/components/dashboard/PerformanceMatrix";
 import { FYPerformanceSection } from "@/components/dashboard/FYPerformance";
 import { AllocationOverview } from "@/components/dashboard/AllocationOverview";
+import { SectorMarketSplit } from "@/components/dashboard/SectorMarketSplit";
 
 const HoldingsTable = lazy(
   () =>
@@ -36,6 +37,7 @@ export default function InvestmentDashboardPage() {
       <div className="space-y-4">
         <TopKPIBar />
         <AllocationOverview />
+        <SectorMarketSplit />
         <div className="space-y-4">
           <h2 className="text-lg font-semibold">Performance Matrix</h2>
           <PerformanceMatrix />
