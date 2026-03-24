@@ -1,25 +1,59 @@
 "use client";
 
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { usePortfolioSnapshot, useFormatINR } from "@/lib/store/dashboardStore";
+import {
+  useDashboardStore,
+  usePortfolioSnapshot,
+  useFormatINR,
+} from "@/lib/store/dashboardStore";
 
 function formatPercent(value: number | null): string {
   if (value === null) return "—";
   return `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
 }
 
+/** Treat sub-paisa differences as equal (filtered vs full book). */
+function marketValuesDiffer(a: number, b: number): boolean {
+  return Math.abs(a - b) >= 0.01;
+}
+
 export function TopKPIBar() {
   const snapshot = usePortfolioSnapshot();
   const formatINR = useFormatINR();
+  const allHoldings = useDashboardStore((s) => s.holdings);
+  const totalAUMUnfiltered = useMemo(
+    () => allHoldings.reduce((s, h) => s + h.currentValue, 0),
+    [allHoldings]
+  );
 
   const alphaPct: number | null =
     snapshot.portfolioXIRR != null && snapshot.benchmarkXIRR != null
       ? snapshot.portfolioXIRR - snapshot.benchmarkXIRR
       : null;
 
+  const filteredMarketValue = snapshot.portfolioMarketValue;
+  const showFullBookTotalAUM = marketValuesDiffer(
+    totalAUMUnfiltered,
+    filteredMarketValue
+  );
+
+  const wealthKpis: KpiItem[] = showFullBookTotalAUM
+    ? [
+        {
+          label: "Total AUM (all portfolios)",
+          value: formatINR(totalAUMUnfiltered),
+        },
+        {
+          label: "Portfolio Market Value",
+          value: formatINR(filteredMarketValue),
+        },
+      ]
+    : [{ label: "Total AUM", value: formatINR(filteredMarketValue) }];
+
   // —— Single row: Wealth → Profitability → Cash → Performance (institutional order) ——
   const kpis: KpiItem[] = [
-    { label: "Portfolio Market Value", value: formatINR(snapshot.portfolioMarketValue) },
+    ...wealthKpis,
     { label: "Total Invested Capital", value: formatINR(snapshot.totalCostValue) },
     {
       label: "Absolute Gain",
@@ -51,8 +85,13 @@ export function TopKPIBar() {
     },
   ];
 
+  const gridCols =
+    kpis.length > 9
+      ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-10"
+      : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-9";
+
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-9 gap-3">
+    <div className={`grid ${gridCols} gap-3`}>
       {kpis.map((kpi) => (
         <KpiCard key={kpi.label} kpi={kpi} />
       ))}
