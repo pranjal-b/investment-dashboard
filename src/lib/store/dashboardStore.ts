@@ -795,10 +795,9 @@ export function useAllocationHealthScore(): number {
 
 export function useTopHoldingsByDeviation(limit: number = 10) {
   const holdings = useFilteredHoldings();
-  const buckets = useAllocationBuckets();
   const totalMarketValue = useMemo(
-    () => buckets.reduce((s, b) => s + b.marketValue, 0),
-    [buckets]
+    () => holdings.reduce((s, h) => s + h.currentValue, 0),
+    [holdings]
   );
   return useMemo(
     () => getTopHoldingsByDeviation(holdings, totalMarketValue, limit),

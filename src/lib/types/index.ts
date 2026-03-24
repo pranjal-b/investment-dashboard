@@ -248,7 +248,11 @@ export interface Holding {
   peDirectEarly?: PeDirectEarlyLine;
   peGrowth?: PeDirectEarlyLine & {
     distributionsCurrentValue?: number;
+    /** Growth-stage NAV / unit (per SOA) */
+    nav?: number | null;
     soaReconciled?: boolean;
+    /** Ops verification / checklist */
+    reviewCheck?: boolean;
   };
 }
 

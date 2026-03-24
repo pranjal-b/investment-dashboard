@@ -178,7 +178,9 @@ export function SubtypeFolioPanel({ holding: h }: { holding: Holding }) {
             <Row label="Capital ₹" value={h.peDirectEarly?.capitalRs ?? h.peGrowth?.capitalRs} />
             <Row label="Remaining DD" value={h.peDirectEarly?.remainingDrawdownCommitment ?? h.peGrowth?.remainingDrawdownCommitment} />
             <Row label="DIS / dist. value" value={h.peGrowth?.distributionsCurrentValue} />
+            <Row label="NAV (SOA)" value={h.peGrowth?.nav} />
             <Row label="SOA reconciled" value={h.peGrowth?.soaReconciled === true ? "Yes" : h.peGrowth?.soaReconciled === false ? "No" : undefined} />
+            <Row label="Review check" value={h.peGrowth?.reviewCheck === true ? "Yes" : h.peGrowth?.reviewCheck === false ? "No" : undefined} />
           </div>
         )}
 

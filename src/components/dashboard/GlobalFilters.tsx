@@ -50,6 +50,7 @@ const PORTFOLIO_OPTIONS: { value: PortfolioFilter; label: string }[] = [
 const SCOPE_ASSET_CLASS_OPTIONS: { value: ScopeAssetClass; label: string }[] = [
   { value: "all", label: "All" },
   { value: "liquid", label: "Liquid & equivalents" },
+  { value: "cash", label: "Cash (legacy → liquid)" },
   { value: "debt", label: "Debt" },
   { value: "equity", label: "Equity" },
   { value: "alternatives", label: "Alternatives" },

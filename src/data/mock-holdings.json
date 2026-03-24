@@ -241,6 +241,7 @@
       "id": "pms-1",
       "assetName": "Motilal Oswal PMS – Concentrated Equity",
       "assetType": "PMS",
+      "instrumentSubtype": "pms",
       "sector": "Mixed",
       "marketCap": "Large",
       "investedAmount": 1200000000,
@@ -360,9 +361,11 @@
         "incomeRs": 2100000,
         "capitalRs": 31000000,
         "distributionsCurrentValue": 5600000,
+        "nav": 1.082,
         "remainingDrawdownCommitment": 120000000,
         "soaAsOfDate": "2025-02-28",
-        "soaReconciled": true
+        "soaReconciled": true,
+        "reviewCheck": true
       },
       "sector": "Mixed",
       "marketCap": "Large",
@@ -383,6 +386,13 @@
       "id": "mf-1",
       "assetName": "HDFC Top 100 Fund – Institutional",
       "assetType": "MutualFund",
+      "instrumentSubtype": "equity_mf",
+      "equityMf": {
+        "custodianBankName": "HDFC Bank",
+        "depositoryParticipant": "CDSL",
+        "equitySchemeTag": "Large cap blend",
+        "folioNumber": "MF-EMF-001"
+      },
       "sector": "Large Cap",
       "marketCap": "Large",
       "investedAmount": 520000000,
@@ -535,6 +545,17 @@
       "assetName": "ICICI Pru Nifty 50 ETF",
       "assetType": "ETF",
       "instrumentSubtype": "equity_etf",
+      "equityEtf": {
+        "folioNumber": "ETF-4401",
+        "investmentDate": "2022-06-15",
+        "valuationAsOfDate": "2025-03-20",
+        "scriptCode": "INF109KC010",
+        "fundHouse": "ICICI Prudential",
+        "depositoryParticipant": "NSDL",
+        "units": 185000,
+        "averageCostPerUnit": 214.5,
+        "nav": 221.6
+      },
       "sector": "Broad Market",
       "marketCap": "Large",
       "investedAmount": 180000000,
@@ -669,8 +690,27 @@
       "currentValue": 15200000,
       "targetAllocationPct": 0.4,
       "bondCollateralType": "unknown",
+      "bondSeniority": "unspecified",
       "transactions": [
         { "date": "2024-11-01", "amount": -15000000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "bond-perp-1",
+      "assetName": "Perpetual bond – illustrative",
+      "assetType": "DebtMF",
+      "instrumentSubtype": "short_maturity_bond",
+      "sector": "Bank Capital",
+      "marketCap": "Large",
+      "investedAmount": 12000000,
+      "currentValue": 11900000,
+      "targetAllocationPct": 0.35,
+      "benchmark": "—",
+      "creditRating": "AA+",
+      "bondCollateralType": "unsecured",
+      "bondSeniority": "perpetual",
+      "transactions": [
+        { "date": "2024-10-01", "amount": -12000000, "type": "buy" }
       ]
     },
     {
@@ -695,6 +735,111 @@
       },
       "transactions": [
         { "date": "2023-08-20", "amount": -55000000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "arb-1",
+      "assetName": "Kotak Equity Arbitrage – Institutional",
+      "assetType": "DebtMF",
+      "instrumentSubtype": "arbitrage",
+      "fundFolio": {
+        "folioNumber": "ARB-771",
+        "investmentDate": "2024-01-10",
+        "valuationAsOfDate": "2025-03-15",
+        "scriptCode": "INF174K01LS8",
+        "fundHouse": "Kotak AMC",
+        "advisorName": "Treasury desk",
+        "depositoryParticipant": "CDSL",
+        "units": 4200000,
+        "averageCostPerUnit": 32.1,
+        "nav": 32.85
+      },
+      "sector": "Arbitrage",
+      "marketCap": "Large",
+      "investedAmount": 134820000,
+      "currentValue": 137970000,
+      "targetAllocationPct": 0.3,
+      "benchmark": "—",
+      "ter": 0.35,
+      "creditRating": "AAA",
+      "sectorSplit": {},
+      "transactions": [
+        { "date": "2024-01-10", "amount": -134820000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "invit-1",
+      "assetName": "India Grid Trust InvIT",
+      "assetType": "ETF",
+      "instrumentSubtype": "invit",
+      "sector": "InvIT",
+      "marketCap": "Large",
+      "investedAmount": 28000000,
+      "currentValue": 29200000,
+      "targetAllocationPct": 0.2,
+      "benchmark": "Nifty Infra Tri",
+      "reitInvit": {
+        "folioNumber": "I-881",
+        "scriptCodes": ["INDIGRID"],
+        "depositoryParticipant": "NSDL",
+        "units": 90000,
+        "nav": 324.4,
+        "investmentDate": "2023-11-05",
+        "valuationAsOfDate": "2025-03-20"
+      },
+      "transactions": [
+        { "date": "2023-11-05", "amount": -28000000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "feeder-1",
+      "assetName": "Mauritius Feeder – US Growth (illustrative)",
+      "assetType": "MutualFund",
+      "instrumentSubtype": "feeder_fund",
+      "equityMandate": "InternationalFeeder",
+      "feederFund": {
+        "folioNumber": "FD-OS-12",
+        "fundHouse": "Offshore AMC Ltd",
+        "advisorName": "Global advisory",
+        "depositoryParticipant": "—",
+        "scriptCodes": ["VGT", "QQQ"]
+      },
+      "sector": "Broad Market",
+      "marketCap": "Large",
+      "investedAmount": 95000000,
+      "currentValue": 102000000,
+      "targetAllocationPct": 0.5,
+      "benchmark": "NASDAQ 100",
+      "sectorSplit": {},
+      "transactions": [
+        { "date": "2023-05-01", "amount": -95000000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "ped-1",
+      "assetName": "Series A – Direct early (illustrative)",
+      "assetType": "AIF",
+      "instrumentSubtype": "pe_direct_early",
+      "unlistedStage": "early",
+      "peDirectEarly": {
+        "profitRs": 0,
+        "incomeRs": 0,
+        "capitalRs": 5000000,
+        "commissionRs": 250000,
+        "remainingDrawdownCommitment": 15000000,
+        "soaAsOfDate": "2025-02-28",
+        "statementOfAccountRef": "SOA-PE-2025-02"
+      },
+      "sector": "Private",
+      "marketCap": "Small",
+      "investedAmount": 25000000,
+      "currentValue": 25250000,
+      "targetAllocationPct": 0.2,
+      "benchmark": "—",
+      "lockInPct": 0,
+      "sectorSplit": {},
+      "transactions": [
+        { "date": "2024-08-01", "amount": -25000000, "type": "buy" }
       ]
     }
   ]
