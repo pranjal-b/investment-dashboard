@@ -44,7 +44,7 @@ const Y_AXIS_OPTIONS = [
 const VIEW_BY_OPTIONS = [
   { value: "portfolio" as const, label: "Portfolio" },
   { value: "assetClass" as const, label: "Asset class" },
-  { value: "vehicle" as const, label: "Vehicle" },
+  { value: "vehicle" as const, label: "Instrument" },
 ];
 
 const LABEL_CLASS =

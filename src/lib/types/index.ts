@@ -12,6 +12,130 @@ export type AssetType =
   | "DebtMF"
   | "IndexFund";
 
+/** Five-sleeve policy taxonomy (macro allocation, filters, performance grouping) */
+export type AllocationSleeve =
+  | "liquid"
+  | "debt"
+  | "equity"
+  | "alternatives"
+  | "unlisted";
+
+/** Drives sleeve via getAllocationSleeve before assetType fallback */
+export type InstrumentSubtype =
+  | "liquid_fund"
+  | "arbitrage"
+  | "credit_fund"
+  | "bank_balance"
+  | "short_maturity_bond"
+  | "direct_equity"
+  | "feeder_fund"
+  | "equity_etf"
+  | "equity_mf"
+  | "pms"
+  | "gold_etf"
+  | "reit"
+  | "invit"
+  | "pe_direct_early"
+  | "pe_growth"
+  | "pe_fund_early_growth"
+  | "pe_fund_late"
+  | "angel_seed"
+  | "early"
+  | "growth"
+  | "late_pre_ipo";
+
+export type EquityMandate =
+  | "Core"
+  | "OldCore"
+  | "CoreExit"
+  | "InternationalFeeder";
+
+export type BondCollateralType = "secured" | "unsecured" | "unknown";
+
+export type BondSeniority =
+  | "senior"
+  | "at1"
+  | "perpetual"
+  | "subordinated_other"
+  | "unspecified";
+
+/** Shared nested line for liquid / arbitrage / credit fund folios */
+export interface FundFolioLine {
+  folioNumber?: string;
+  investmentDate?: string;
+  valuationAsOfDate?: string;
+  scriptCode?: string;
+  fundHouse?: string;
+  advisorName?: string;
+  depositoryParticipant?: string;
+  averageCostPerUnit?: number;
+  units?: number;
+  irrRoughPct?: number | null;
+  nav?: number | null;
+  legalEntityId?: string;
+  entityName?: string;
+}
+
+export interface BankBalanceLine {
+  bankName?: string;
+  entityName?: string;
+  currentBalance?: number;
+  balanceAsOfDate?: string;
+}
+
+export interface ShortMaturityBondLine extends FundFolioLine {
+  maturityDate?: string;
+  ytmAtInvestmentPct?: number | null;
+}
+
+export interface DirectEquityLine {
+  portfolioLabel?: string;
+  advisorName?: string;
+  depositoryParticipant?: string;
+  isPledged?: boolean;
+  pledgeDetail?: string;
+}
+
+export interface PeDirectEarlyLine {
+  costValue?: number;
+  profitRs?: number;
+  incomeRs?: number;
+  capitalRs?: number;
+  commissionRs?: number;
+  remainingDrawdownCommitment?: number;
+  soaAsOfDate?: string;
+  statementOfAccountRef?: string;
+}
+
+export interface GoldEtfLine {
+  folioNumber?: string;
+  investmentDate?: string;
+  valuationAsOfDate?: string;
+  scriptCodes?: string[];
+  scriptCode?: string;
+  fundHouse?: string;
+  advisorName?: string;
+  depositoryParticipant?: string;
+  averageCostPerUnit?: number;
+  units?: number;
+  irrRoughPct?: number | null;
+  nav?: number | null;
+}
+
+export interface ReitInvitLine {
+  folioNumber?: string;
+  investmentDate?: string;
+  valuationAsOfDate?: string;
+  scriptCodes?: string[];
+  scriptCode?: string;
+  advisorName?: string;
+  depositoryParticipant?: string;
+  averageCostPerUnit?: number;
+  units?: number;
+  irrRoughPct?: number | null;
+  nav?: number | null;
+}
+
 /** Bucket IDs for allocation (Direct Equity, Equity MF, Debt MF, Alt FOF, PMS, AIF, ETF, Index) */
 export type AllocationBucketId =
   | "DirectEquity"
@@ -105,6 +229,27 @@ export interface Holding {
   inceptionDate?: string;
   /** Portfolio bucket: Core, New, or Old (for portfolio filter) */
   portfolioType?: "Core" | "New" | "Old";
+  /** API override; wins in getAllocationSleeve */
+  allocationSleeve?: AllocationSleeve;
+  instrumentSubtype?: InstrumentSubtype;
+  unlistedStage?: string;
+  equityMandate?: EquityMandate;
+  bondCollateralType?: BondCollateralType;
+  bondSeniority?: BondSeniority;
+  fundFolio?: FundFolioLine;
+  bankAccount?: BankBalanceLine;
+  shortMaturityBond?: ShortMaturityBondLine;
+  directEquity?: DirectEquityLine;
+  feederFund?: FundFolioLine & { scriptCodes?: string[] };
+  equityEtf?: FundFolioLine;
+  equityMf?: FundFolioLine & { custodianBankName?: string; equitySchemeTag?: string };
+  goldEtf?: GoldEtfLine;
+  reitInvit?: ReitInvitLine;
+  peDirectEarly?: PeDirectEarlyLine;
+  peGrowth?: PeDirectEarlyLine & {
+    distributionsCurrentValue?: number;
+    soaReconciled?: boolean;
+  };
 }
 
 /** Portfolio filter: Core, Satellite (= New), Legacy (= Old) */
@@ -158,8 +303,18 @@ export type ReportingUnits =
 /** @deprecated Use ReportingUnits */
 export type InrScale = "absolute" | "lac" | "cr";
 
-/** Scope: Asset class bucket — All | Equity | Debt | Alternatives | Cash */
-export type ScopeAssetClass = "all" | "equity" | "debt" | "alternatives" | "cash";
+/**
+ * Scope: All | Equity | Debt | Alternatives | Cash (→ liquid sleeve) | Liquid | Unlisted
+ * Legacy "cash" is treated as liquid in filters.
+ */
+export type ScopeAssetClass =
+  | "all"
+  | "equity"
+  | "debt"
+  | "alternatives"
+  | "cash"
+  | "liquid"
+  | "unlisted";
 
 /** Vehicle: All | Direct | MF | PMS | AIF | ETF | Index | FOF */
 export type VehicleFilter =

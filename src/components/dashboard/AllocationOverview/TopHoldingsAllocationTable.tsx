@@ -76,6 +76,9 @@ export function TopHoldingsAllocationTable() {
                   <TooltipContent side="left" className="max-w-xs">
                     <div className="space-y-1 text-xs">
                       <p className="font-medium">{r.holdingName}</p>
+                      {r.allocationSleeve && (
+                        <p className="text-muted-foreground capitalize">Sleeve: {r.allocationSleeve}</p>
+                      )}
                       <p>Invested: {formatINR(r.invested)}</p>
                       <p>Market value: {formatINR(r.value)}</p>
                       <p>Gain: {formatINR(r.gain)}</p>

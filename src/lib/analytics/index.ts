@@ -28,6 +28,8 @@ export type { ComplianceEngineInput } from "./complianceEngine";
 export { getFYPerformance, getFYPerformanceByCategory, getFYPerformanceByVehicle, getRollingPerformance } from "./performanceEngine";
 export type { PerformanceEngineInput } from "./performanceEngine";
 
+export { getBondTreasuryDiagnostics, normalizeCreditRating } from "./bondCreditEngine";
+
 export type {
   PortfolioSnapshot,
   AllocationBucket,
@@ -50,4 +52,7 @@ export type {
   QuarterlyReturn,
   RollingPerformancePoint,
   BucketPeriodReturn,
+  BondTreasuryDiagnostics,
+  BondSplitSlice,
+  NormalizedRatingKey,
 } from "./types";

@@ -1,10 +1,12 @@
 "use client";
 
+import { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   useAllocationBuckets,
   useFormatINR,
   useRebalanceInsight,
+  usePerformanceMatrixData,
 } from "@/lib/store/dashboardStore";
 import { AllocationSnapshotBar } from "./AllocationSnapshotBar";
 import { AllocationDeviationChart } from "./AllocationDeviationChart";
@@ -13,11 +15,22 @@ function formatPercent(value: number): string {
   return `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
 }
 
+function formatPercentOrDash(value: number | null): string {
+  if (value === null) return "—";
+  return formatPercent(value);
+}
+
 export function AllocationOverview() {
   const buckets = useAllocationBuckets();
   const formatINR = useFormatINR();
   const rebalanceInsight = useRebalanceInsight();
+  const { bucketRows, benchmarkXIRR } = usePerformanceMatrixData();
   const filtered = buckets.filter((b) => b.marketValue > 0);
+  const xirrByBucket = useMemo(() => {
+    const map = new Map<string, number | null>();
+    for (const row of bucketRows) map.set(row.bucketId, row.xirrPct);
+    return map;
+  }, [bucketRows]);
 
   return (
     <div className="space-y-6">
@@ -37,6 +50,8 @@ export function AllocationOverview() {
                 <th className="text-right py-2 px-3 font-medium text-muted-foreground">Residual %</th>
                 <th className="text-right py-2 px-3 font-medium text-muted-foreground">P&L</th>
                 <th className="text-right py-2 px-3 font-medium text-muted-foreground">ROI</th>
+                <th className="text-right py-2 px-3 font-medium text-muted-foreground">XIRR</th>
+                <th className="text-right py-2 px-3 font-medium text-muted-foreground">Benchmark</th>
                 <th className="text-right py-2 px-3 font-medium text-muted-foreground">Unreal. ST</th>
                 <th className="text-right py-2 px-3 font-medium text-muted-foreground">Unreal. LT</th>
               </tr>
@@ -71,6 +86,18 @@ export function AllocationOverview() {
                     }`}
                   >
                     {formatPercent(bucket.roi)}
+                  </td>
+                  <td
+                    className={`text-right py-2 px-3 tabular-nums ${
+                      (xirrByBucket.get(bucket.bucketId) ?? 0) >= 0
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-red-600 dark:text-red-400"
+                    }`}
+                  >
+                    {formatPercentOrDash(xirrByBucket.get(bucket.bucketId) ?? null)}
+                  </td>
+                  <td className="text-right py-2 px-3 tabular-nums text-muted-foreground">
+                    {formatPercentOrDash(benchmarkXIRR)}
                   </td>
                   <td className="text-right py-2 px-3 tabular-nums">{formatINR(bucket.unrealizedST)}</td>
                   <td className="text-right py-2 px-3 tabular-nums">{formatINR(bucket.unrealizedLT)}</td>

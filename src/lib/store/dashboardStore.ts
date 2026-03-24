@@ -11,11 +11,13 @@ import type {
   PortfolioMetrics,
   AssetAllocation,
   AssetType,
+  AllocationSleeve,
   SectorExposure,
   MarketCapExposure,
   DashboardFilters,
   ReportingUnits,
 } from "@/lib/types";
+import { getAllocationSleeve } from "@/lib/classification/sleeveClassifier";
 import { formatINRWithScale } from "@/lib/charts/chartTheme";
 import {
   getPortfolioSnapshot,
@@ -35,12 +37,13 @@ import {
   getFYPerformanceByVehicle,
   getRollingPerformance,
   getHoldingPeriodReturns,
+  getBondTreasuryDiagnostics,
 } from "@/lib/analytics";
 import {
   computeSectorExposure,
   computeMarketCapExposure,
 } from "@/lib/calculations/exposure";
-import { getAssetTypesForCoreOption } from "@/lib/coreBuckets";
+import { getAssetTypesForCoreOption, holdingMatchesCoreOption } from "@/lib/coreBuckets";
 import { getCurrentFY } from "@/lib/performance/fyEngine";
 import { runAggregationEngine } from "@/lib/performance/aggregationEngine";
 import { runBenchmarkEngine } from "@/lib/performance/benchmarkEngine";
@@ -102,6 +105,21 @@ function getScopeAssetTypes(scope: string): AssetType[] {
   return getAssetTypesForCoreOption(scope) ?? [];
 }
 
+/** Top-level filter dropdown maps to a sleeve; other core-bucket values use legacy asset-type matching. */
+function scopeToSleeveFilter(scope: string): AllocationSleeve | "legacy" | null {
+  if (scope === "all") return null;
+  const map: Record<string, AllocationSleeve> = {
+    cash: "liquid",
+    liquid: "liquid",
+    equity: "equity",
+    debt: "debt",
+    alternatives: "alternatives",
+    unlisted: "unlisted",
+  };
+  if (scope in map) return map[scope]!;
+  return "legacy";
+}
+
 /** Vehicle → asset types */
 const VEHICLE_ASSET_TYPES: Record<string, AssetType[]> = {
   direct: ["Equity"],
@@ -118,47 +136,43 @@ function applyFilters(holdings: Holding[], filters: DashboardFilters): Holding[]
 
   const scope = filters.scopeAssetClass ?? "all";
   const vehicle = filters.vehicleFilter ?? "all";
-  const scopeTypes = getScopeAssetTypes(scope);
   const vehicleTypes = vehicle === "all" ? [] : (VEHICLE_ASSET_TYPES[vehicle] ?? []);
+  const sleeveMode = scopeToSleeveFilter(scope);
 
-  if (scopeTypes.length > 0 || vehicleTypes.length > 0) {
-    const allowed = new Set<AssetType>();
-    if (scopeTypes.length > 0 && vehicleTypes.length > 0) {
-      for (const t of scopeTypes) {
-        if (vehicleTypes.includes(t)) allowed.add(t);
-      }
-    } else if (scopeTypes.length > 0) {
-      scopeTypes.forEach((t) => allowed.add(t));
-    } else {
-      vehicleTypes.forEach((t) => allowed.add(t));
-    }
-    if (allowed.size > 0) {
-      result = result.filter((h) => allowed.has(h.assetType));
-    } else {
-      result = [];
+  if (sleeveMode != null && sleeveMode !== "legacy") {
+    result = result.filter((h) => getAllocationSleeve(h) === sleeveMode);
+    if (vehicleTypes.length > 0) {
+      result = result.filter((h) => vehicleTypes.includes(h.assetType));
     }
   } else {
-    const bucketSelection = filters.coreBucketSelection ?? [];
-    const subSelection = filters.coreSubCategorySelection ?? [];
-    if (subSelection.length > 0) {
-      const allowedTypes = new Set<AssetType>();
-      for (const v of subSelection) {
-        for (const t of getAssetTypesForCoreOption(v)) allowedTypes.add(t);
+    const scopeTypes = getScopeAssetTypes(scope);
+    if (scopeTypes.length > 0 || vehicleTypes.length > 0) {
+      const allowed = new Set<AssetType>();
+      if (scopeTypes.length > 0 && vehicleTypes.length > 0) {
+        for (const t of scopeTypes) {
+          if (vehicleTypes.includes(t)) allowed.add(t);
+        }
+      } else if (scopeTypes.length > 0) {
+        scopeTypes.forEach((t) => allowed.add(t));
+      } else {
+        vehicleTypes.forEach((t) => allowed.add(t));
       }
-      if (allowedTypes.size > 0) {
-        result = result.filter((h) => allowedTypes.has(h.assetType));
+      if (allowed.size > 0) {
+        result = result.filter((h) => allowed.has(h.assetType));
       } else {
         result = [];
       }
-    } else if (bucketSelection.length > 0) {
-      const allowedTypes = new Set<AssetType>();
-      for (const b of bucketSelection) {
-        for (const t of getAssetTypesForCoreOption(b)) allowedTypes.add(t);
-      }
-      if (allowedTypes.size > 0) {
-        result = result.filter((h) => allowedTypes.has(h.assetType));
-      } else {
-        result = [];
+    } else {
+      const bucketSelection = filters.coreBucketSelection ?? [];
+      const subSelection = filters.coreSubCategorySelection ?? [];
+      if (subSelection.length > 0) {
+        result = result.filter((h) =>
+          subSelection.some((opt) => holdingMatchesCoreOption(h, opt))
+        );
+      } else if (bucketSelection.length > 0) {
+        result = result.filter((h) =>
+          bucketSelection.some((bid) => holdingMatchesCoreOption(h, bid))
+        );
       }
     }
   }
@@ -330,6 +344,7 @@ export function usePeriodReturns() {
 export interface PerformanceMatrixData {
   bucketRows: import("@/lib/analytics/types").BucketPeriodReturn[];
   benchmarkByPeriod: Record<string, number | null>;
+  portfolioByPeriod: Record<string, number | null>;
   portfolioXIRR: number | null;
   benchmarkXIRR: number | null;
 }
@@ -359,14 +374,23 @@ export function usePerformanceMatrixData(): PerformanceMatrixData {
     return out;
   }, [periodReturns]);
 
+  const portfolioByPeriod = useMemo(() => {
+    const out: Record<string, number | null> = {};
+    for (const row of periodReturns) {
+      out[row.period] = row.portfolio;
+    }
+    return out;
+  }, [periodReturns]);
+
   return useMemo(
     () => ({
       bucketRows,
       benchmarkByPeriod,
+      portfolioByPeriod,
       portfolioXIRR: returnMetrics.portfolioXIRR,
       benchmarkXIRR: returnMetrics.benchmarkXIRR,
     }),
-    [bucketRows, benchmarkByPeriod, returnMetrics.portfolioXIRR, returnMetrics.benchmarkXIRR]
+    [bucketRows, benchmarkByPeriod, portfolioByPeriod, returnMetrics.portfolioXIRR, returnMetrics.benchmarkXIRR]
   );
 }
 
@@ -378,6 +402,11 @@ export function useRiskMetrics() {
 export function useDebtRisk() {
   const holdings = useFilteredHoldings();
   return useMemo(() => getDebtRisk({ holdings }), [holdings]);
+}
+
+export function useBondTreasuryDiagnostics() {
+  const holdings = useFilteredHoldings();
+  return useMemo(() => getBondTreasuryDiagnostics({ holdings }), [holdings]);
 }
 
 export function usePolicyChecks() {
@@ -518,15 +547,17 @@ export function usePerformanceChartData(): PerformanceChartData | null {
 
     if (performanceViewBy === "assetClass" && categoryData.monthOnMonth.length > 0) {
       const xAxisPeriods = categoryData.monthOnMonth.map((m) => m.month);
-      const equityReturns = categoryData.monthOnMonth.map((m) => m.equity);
+      const liquidReturns = categoryData.monthOnMonth.map((m) => m.liquid);
       const debtReturns = categoryData.monthOnMonth.map((m) => m.debt);
+      const equityReturns = categoryData.monthOnMonth.map((m) => m.equity);
       const altReturns = categoryData.monthOnMonth.map((m) => m.alternatives);
+      const unlistedReturns = categoryData.monthOnMonth.map((m) => m.unlisted);
       const segmentSeries: PerformanceSeries[] = [
         {
-          id: "equity",
-          name: "Equity",
-          values: mode === "return" ? equityReturns : returnsToIndexed(equityReturns),
-          periodReturnsPct: equityReturns,
+          id: "liquid",
+          name: "Liquid & equivalents",
+          values: mode === "return" ? liquidReturns : returnsToIndexed(liquidReturns),
+          periodReturnsPct: liquidReturns,
         },
         {
           id: "debt",
@@ -535,15 +566,27 @@ export function usePerformanceChartData(): PerformanceChartData | null {
           periodReturnsPct: debtReturns,
         },
         {
+          id: "equity",
+          name: "Equity",
+          values: mode === "return" ? equityReturns : returnsToIndexed(equityReturns),
+          periodReturnsPct: equityReturns,
+        },
+        {
           id: "alternatives",
           name: "Alternatives",
           values: mode === "return" ? altReturns : returnsToIndexed(altReturns),
           periodReturnsPct: altReturns,
         },
+        {
+          id: "unlisted",
+          name: "Unlisted",
+          values: mode === "return" ? unlistedReturns : returnsToIndexed(unlistedReturns),
+          periodReturnsPct: unlistedReturns,
+        },
       ];
       return {
         xAxisPeriods,
-        portfolio: segmentSeries[0]!,
+        portfolio: segmentSeries[2]!,
         benchmarks: [],
         segmentSeries,
         yAxisMode: mode === "value" ? "return" : mode,
@@ -716,11 +759,8 @@ export function useAllocation(): AssetAllocation[] {
 }
 
 export function useMacroAllocation() {
-  const buckets = useAllocationBuckets();
-  return useMemo(() => {
-    const total = buckets.reduce((s, b) => s + b.marketValue, 0);
-    return getMacroAllocation(buckets, total);
-  }, [buckets]);
+  const holdings = useFilteredHoldings();
+  return useMemo(() => getMacroAllocation(holdings), [holdings]);
 }
 
 export function useAllocationDeviation(): number {
@@ -733,10 +773,10 @@ export function useAllocationDeviation(): number {
 
 export function useRebalanceInsight() {
   const macro = useMacroAllocation();
-  const buckets = useAllocationBuckets();
+  const holdings = useFilteredHoldings();
   const totalMarketValue = useMemo(
-    () => buckets.reduce((s, b) => s + b.marketValue, 0),
-    [buckets]
+    () => holdings.reduce((s, h) => s + h.currentValue, 0),
+    [holdings]
   );
   return useMemo(
     () => getRebalanceInsight(macro, totalMarketValue),

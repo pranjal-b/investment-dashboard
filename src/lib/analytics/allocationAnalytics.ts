@@ -1,11 +1,11 @@
 /**
- * Allocation analytics: macro allocation (Equity/Debt/Alternatives/Cash),
+ * Allocation analytics: five-sleeve macro allocation,
  * rebalance insight, health score, top holdings by deviation.
  * All calculations centralized; UI consumes via selectors only.
  */
 
-import type { AllocationBucket } from "./types";
-import type { Holding, AllocationBucketId } from "@/lib/types";
+import type { Holding } from "@/lib/types";
+import { getAllocationSleeve } from "@/lib/classification/sleeveClassifier";
 import type {
   MacroAllocationRow,
   MacroClassId,
@@ -13,30 +13,24 @@ import type {
   TopHoldingAllocationRow,
 } from "./types";
 
-const MACRO_ORDER: MacroClassId[] = ["equity", "debt", "alternatives", "cash"];
+const MACRO_ORDER: MacroClassId[] = [
+  "liquid",
+  "debt",
+  "equity",
+  "alternatives",
+  "unlisted",
+];
 const MACRO_LABELS: Record<MacroClassId, string> = {
-  equity: "Equity",
+  liquid: "Liquid & equivalents",
   debt: "Debt",
+  equity: "Equity",
   alternatives: "Alternatives",
-  cash: "Cash",
+  unlisted: "Unlisted",
 };
 
-/** Map allocation bucket to macro class */
-const BUCKET_TO_MACRO: Record<AllocationBucketId, MacroClassId> = {
-  DirectEquity: "equity",
-  EquityMF: "equity",
-  PMS: "equity",
-  ETF: "equity",
-  IndexFund: "equity",
-  DebtMF: "debt",
-  AlternativeFOF: "alternatives",
-  AIF: "alternatives",
-};
-
-export function getMacroAllocation(
-  buckets: AllocationBucket[],
-  totalMarketValue: number
-): MacroAllocationRow[] {
+/** Holding-level rollup so subtypes (liquid MF, gold ETF, PE) land in the right sleeve. */
+export function getMacroAllocation(holdings: Holding[]): MacroAllocationRow[] {
+  const totalMarketValue = holdings.reduce((s, h) => s + h.currentValue, 0);
   const byMacro = new Map<
     MacroClassId,
     { value: number; invested: number; targetWeighted: number }
@@ -45,13 +39,12 @@ export function getMacroAllocation(
     byMacro.set(cid, { value: 0, invested: 0, targetWeighted: 0 });
   }
 
-  for (const b of buckets) {
-    const macro = BUCKET_TO_MACRO[b.bucketId];
-    if (!macro) continue;
+  for (const h of holdings) {
+    const macro = getAllocationSleeve(h);
     const data = byMacro.get(macro)!;
-    data.value += b.marketValue;
-    data.invested += b.invested;
-    data.targetWeighted += (b.targetPct / 100) * totalMarketValue;
+    data.value += h.currentValue;
+    data.invested += h.costValue ?? h.investedAmount;
+    data.targetWeighted += (h.targetAllocationPct / 100) * h.currentValue;
     byMacro.set(macro, data);
   }
 
@@ -147,6 +140,7 @@ export function getTopHoldingsByDeviation(
       return {
         holdingId: h.id,
         holdingName: h.assetName,
+        allocationSleeve: getAllocationSleeve(h),
         weightPct,
         targetPct,
         deviationPct: weightPct - targetPct,

@@ -18,7 +18,9 @@ const BUCKET_LABELS: Record<AllocationBucketId, string> = {
 };
 
 /** Map AssetType to allocation bucket (single bucket per type for now) */
-function assetTypeToBucket(assetType: Holding["assetType"]): AllocationBucketId {
+export function assetTypeToBucket(
+  assetType: Holding["assetType"]
+): AllocationBucketId {
   const map: Record<string, AllocationBucketId> = {
     Equity: "DirectEquity",
     MutualFund: "EquityMF",

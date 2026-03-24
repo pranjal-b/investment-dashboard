@@ -4,6 +4,14 @@
       "id": "eq-1",
       "assetName": "HDFC Bank",
       "assetType": "Equity",
+      "instrumentSubtype": "direct_equity",
+      "equityMandate": "Core",
+      "directEquity": {
+        "portfolioLabel": "Core book",
+        "advisorName": "Private wealth desk",
+        "depositoryParticipant": "NSDL",
+        "isPledged": false
+      },
       "sector": "Banking",
       "marketCap": "Large",
       "investedAmount": 450000000,
@@ -345,6 +353,17 @@
       "id": "aif-3",
       "assetName": "Multiples Alternate Asset Management – PE Fund",
       "assetType": "AIF",
+      "instrumentSubtype": "pe_growth",
+      "unlistedStage": "growth",
+      "peGrowth": {
+        "profitRs": 8200000,
+        "incomeRs": 2100000,
+        "capitalRs": 31000000,
+        "distributionsCurrentValue": 5600000,
+        "remainingDrawdownCommitment": 120000000,
+        "soaAsOfDate": "2025-02-28",
+        "soaReconciled": true
+      },
       "sector": "Mixed",
       "marketCap": "Large",
       "investedAmount": 450000000,
@@ -444,6 +463,19 @@
       "id": "mf-5",
       "assetName": "HDFC Liquid Fund – Institutional",
       "assetType": "DebtMF",
+      "instrumentSubtype": "liquid_fund",
+      "fundFolio": {
+        "folioNumber": "LF-88302",
+        "investmentDate": "2023-01-15",
+        "valuationAsOfDate": "2025-03-15",
+        "scriptCode": "INF179K01XY6",
+        "fundHouse": "HDFC AMC",
+        "advisorName": "CFO office",
+        "depositoryParticipant": "CDSL",
+        "units": 12500000,
+        "averageCostPerUnit": 22.4,
+        "nav": 23.36
+      },
       "sector": "Liquid",
       "marketCap": "Large",
       "investedAmount": 280000000,
@@ -470,6 +502,8 @@
       "targetAllocationPct": 5,
       "benchmark": "Nifty 50",
       "ter": 0.35,
+      "bondCollateralType": "secured",
+      "bondSeniority": "senior",
       "creditRating": "SOV",
       "sectorSplit": {},
       "transactions": [
@@ -500,6 +534,7 @@
       "id": "mf-8",
       "assetName": "ICICI Pru Nifty 50 ETF",
       "assetType": "ETF",
+      "instrumentSubtype": "equity_etf",
       "sector": "Broad Market",
       "marketCap": "Large",
       "investedAmount": 180000000,
@@ -512,6 +547,154 @@
       "sectorSplit": { "Banking": 18, "IT": 15, "Energy": 14, "FMCG": 10, "Auto": 8, "Pharma": 6, "Infra": 12, "CapitalGoods": 10, "Chemicals": 4, "Consumption": 3 },
       "transactions": [
         { "date": "2022-06-15", "amount": -180000000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "gold-1",
+      "assetName": "ICICI Pru Gold ETF",
+      "assetType": "ETF",
+      "instrumentSubtype": "gold_etf",
+      "goldEtf": {
+        "folioNumber": "G-2201",
+        "investmentDate": "2023-04-10",
+        "valuationAsOfDate": "2025-03-20",
+        "scriptCode": "INF109KC1N23",
+        "scriptCodes": ["INF109KC1N23"],
+        "fundHouse": "ICICI Prudential",
+        "units": 85000,
+        "nav": 841.2
+      },
+      "sector": "Commodity",
+      "marketCap": "Large",
+      "investedAmount": 62000000,
+      "currentValue": 71500000,
+      "targetAllocationPct": 1.5,
+      "benchmark": "Domestic Gold",
+      "transactions": [
+        { "date": "2023-04-10", "amount": -62000000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "bank-1",
+      "assetName": "HDFC Bank – Current account (Ops)",
+      "assetType": "MutualFund",
+      "instrumentSubtype": "bank_balance",
+      "sector": "Cash",
+      "marketCap": "Large",
+      "investedAmount": 0,
+      "currentValue": 42500000,
+      "targetAllocationPct": 1,
+      "benchmark": "—",
+      "bankAccount": {
+        "bankName": "HDFC Bank",
+        "entityName": "Family Office Pvt Ltd",
+        "currentBalance": 42500000,
+        "balanceAsOfDate": "2025-03-20"
+      },
+      "transactions": [
+        { "date": "2024-12-01", "amount": -42500000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "mf-credit-1",
+      "assetName": "HDFC Corporate Bond Fund – Institutional",
+      "assetType": "DebtMF",
+      "instrumentSubtype": "credit_fund",
+      "sector": "Credit",
+      "marketCap": "Large",
+      "investedAmount": 95000000,
+      "currentValue": 98200000,
+      "targetAllocationPct": 2,
+      "benchmark": "CRISIL Short Term Bond",
+      "creditRating": "AA+",
+      "bondCollateralType": "unsecured",
+      "fundFolio": {
+        "folioNumber": "CB-9921",
+        "fundHouse": "HDFC AMC",
+        "depositoryParticipant": "NSDL"
+      },
+      "transactions": [
+        { "date": "2023-08-01", "amount": -95000000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "bond-corp-1",
+      "assetName": "REC Ltd 7.49% 2030",
+      "assetType": "DebtMF",
+      "instrumentSubtype": "short_maturity_bond",
+      "sector": "PSU Bond",
+      "marketCap": "Large",
+      "investedAmount": 40000000,
+      "currentValue": 41200000,
+      "targetAllocationPct": 1,
+      "benchmark": "—",
+      "creditRating": "AAA",
+      "bondCollateralType": "unsecured",
+      "bondSeniority": "senior",
+      "shortMaturityBond": {
+        "maturityDate": "2030-09-15",
+        "ytmAtInvestmentPct": 7.42,
+        "scriptCode": "INE020B08CP5",
+        "fundHouse": "Direct ISIN"
+      },
+      "transactions": [
+        { "date": "2024-06-01", "amount": -40000000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "bond-at1-1",
+      "assetName": "SBI Additional Tier 1 (illustrative)",
+      "assetType": "DebtMF",
+      "instrumentSubtype": "short_maturity_bond",
+      "sector": "Bank Capital",
+      "marketCap": "Large",
+      "investedAmount": 28000000,
+      "currentValue": 27500000,
+      "targetAllocationPct": 0.8,
+      "creditRating": "AA+",
+      "bondCollateralType": "unsecured",
+      "bondSeniority": "at1",
+      "transactions": [
+        { "date": "2024-09-01", "amount": -28000000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "bond-unrated-1",
+      "assetName": "Private placement – unrated (illustrative)",
+      "assetType": "DebtMF",
+      "instrumentSubtype": "short_maturity_bond",
+      "sector": "Private Credit",
+      "marketCap": "Mid",
+      "investedAmount": 15000000,
+      "currentValue": 15200000,
+      "targetAllocationPct": 0.4,
+      "bondCollateralType": "unknown",
+      "transactions": [
+        { "date": "2024-11-01", "amount": -15000000, "type": "buy" }
+      ]
+    },
+    {
+      "id": "reit-1",
+      "assetName": "Embassy Office Parks REIT",
+      "assetType": "ETF",
+      "instrumentSubtype": "reit",
+      "sector": "REIT",
+      "marketCap": "Large",
+      "investedAmount": 55000000,
+      "currentValue": 58800000,
+      "targetAllocationPct": 1.2,
+      "benchmark": "Nifty REIT Tri",
+      "reitInvit": {
+        "folioNumber": "R-104",
+        "scriptCodes": ["EMBASSY"],
+        "depositoryParticipant": "NSDL",
+        "units": 28000,
+        "nav": 2100,
+        "investmentDate": "2023-08-20",
+        "valuationAsOfDate": "2025-03-20"
+      },
+      "transactions": [
+        { "date": "2023-08-20", "amount": -55000000, "type": "buy" }
       ]
     }
   ]

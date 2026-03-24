@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { usePerformanceMatrixData, useDashboardStore } from "@/lib/store/dashboardStore";
 import { PERFORMANCE_MATRIX_PERIODS } from "@/lib/analytics/returnEngine";
+import { BENCHMARK_LABELS } from "@/lib/performance/benchmarkEngine";
 import {
   getPerformanceMatrixSample,
   PERFORMANCE_MATRIX_SCENARIOS,
@@ -39,7 +40,8 @@ export function PerformanceMatrix() {
     (s) => (s.filters.performanceMatrixScenario ?? "moderate") as "live" | PerformanceMatrixScenario
   );
   const setFilters = useDashboardStore((s) => s.setFilters);
-  const { bucketRows, benchmarkByPeriod, portfolioXIRR } = usePerformanceMatrixData();
+  const { bucketRows, benchmarkByPeriod, portfolioByPeriod, portfolioXIRR, benchmarkXIRR } =
+    usePerformanceMatrixData();
   const periods = [...PERFORMANCE_MATRIX_PERIODS];
   const useSample = scenario !== "live";
   const sampleRows = useSample ? getPerformanceMatrixSample(scenario as PerformanceMatrixScenario) : null;
@@ -69,6 +71,13 @@ export function PerformanceMatrix() {
               ))}
             </SelectContent>
           </Select>
+        </div>
+        {/* Benchmark selector (uses FY Performance benchmark keys) */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Benchmark
+          </span>
+          <span className="text-xs text-muted-foreground">From global performance controls</span>
         </div>
       </div>
 
@@ -141,7 +150,7 @@ export function PerformanceMatrix() {
                   ))}
                   <tr className="border-b border-border/50 hover:bg-muted/30">
                     <td className="py-2 px-3 font-medium text-muted-foreground">
-                      Benchmark
+                      Benchmark (XIRR)
                     </td>
                     {periods.map((p) => (
                       <td
@@ -153,17 +162,13 @@ export function PerformanceMatrix() {
                     ))}
                   </tr>
                   <tr className="bg-muted/30">
-                    <td className="py-2 px-3 font-medium">XIRR</td>
-                    {periods.map((p, i) => (
+                    <td className="py-2 px-3 font-medium">Portfolio XIRR</td>
+                    {periods.map((p) => (
                       <td
                         key={p}
                         className="text-right py-2 px-3 tabular-nums font-medium"
                       >
-                        {i < periods.length - 1 ? (
-                          <span className="text-muted-foreground">—</span>
-                        ) : (
-                          formatPercent(portfolioXIRR)
-                        )}
+                        {formatPercent(portfolioByPeriod[p] ?? null)}
                       </td>
                     ))}
                   </tr>

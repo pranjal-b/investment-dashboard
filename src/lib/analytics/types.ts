@@ -3,7 +3,7 @@
  * All UI consumes these only; no financial logic in components.
  */
 
-import type { AllocationBucketId } from "@/lib/types";
+import type { AllocationBucketId, AllocationSleeve } from "@/lib/types";
 
 export interface PortfolioSnapshot {
   portfolioMarketValue: number;
@@ -41,8 +41,8 @@ export interface AllocationBucket {
   unrealizedLT: number;
 }
 
-/** Macro asset class (Equity / Debt / Alternatives / Cash) for allocation snapshot */
-export type MacroClassId = "equity" | "debt" | "alternatives" | "cash";
+/** Macro rows: five-sleeve taxonomy (same as AllocationSleeve) */
+export type MacroClassId = AllocationSleeve;
 
 export interface MacroAllocationRow {
   classId: MacroClassId;
@@ -65,12 +65,59 @@ export interface RebalanceInsight {
 export interface TopHoldingAllocationRow {
   holdingId: string;
   holdingName: string;
+  allocationSleeve?: AllocationSleeve;
   weightPct: number;
   targetPct: number;
   deviationPct: number;
   value: number;
   invested: number;
   gain: number;
+}
+
+/** Normalized rating band for fixed-income book analytics */
+export type NormalizedRatingKey =
+  | "AAA"
+  | "AA+"
+  | "AA"
+  | "A+"
+  | "A"
+  | "BBB+"
+  | "BBB"
+  | "BB+"
+  | "BB"
+  | "SOV"
+  | "unrated"
+  | "NR"
+  | "other";
+
+export interface BondSplitSlice {
+  key: string;
+  label: string;
+  value: number;
+  pct: number;
+}
+
+export interface BondTreasuryDiagnostics {
+  totalDebtValue: number;
+  securedVsUnsecured: {
+    secured: { value: number; pct: number };
+    unsecured: { value: number; pct: number };
+    unknownCollateral: { value: number; pct: number };
+  };
+  /** Only unsecured book; pctOfUnsecured sums to ~100 */
+  unsecuredByRating: { bucket: NormalizedRatingKey; value: number; pctOfUnsecured: number }[];
+  seniorityBreakdown: BondSplitSlice[];
+  ratingDistribution: BondSplitSlice[];
+  riskSignals: {
+    unsecuredPct: number;
+    unspecifiedSeniorityPct: number;
+    unratedPct: number;
+    hasSubordinatedExposure: boolean;
+    highUnsecuredShare: boolean;
+    largeUnspecifiedSeniority: boolean;
+    bullets: string[];
+  };
+  overallAssessment: string;
 }
 
 export interface ReturnMetrics {
@@ -145,12 +192,14 @@ export interface FYPerformance {
   quarterly: QuarterlyReturn[];
 }
 
-/** Month-on-month return by asset category for FY Performance category-wise view */
+/** Month-on-month return by sleeve for FY Performance category-wise view */
 export interface CategoryMonthReturn {
   month: string;
-  equity: number | null;
+  liquid: number | null;
   debt: number | null;
+  equity: number | null;
   alternatives: number | null;
+  unlisted: number | null;
   portfolio: number;
   benchmark: number;
 }

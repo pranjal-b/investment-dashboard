@@ -49,10 +49,11 @@ const PORTFOLIO_OPTIONS: { value: PortfolioFilter; label: string }[] = [
 
 const SCOPE_ASSET_CLASS_OPTIONS: { value: ScopeAssetClass; label: string }[] = [
   { value: "all", label: "All" },
-  { value: "equity", label: "Equity" },
+  { value: "liquid", label: "Liquid & equivalents" },
   { value: "debt", label: "Debt" },
+  { value: "equity", label: "Equity" },
   { value: "alternatives", label: "Alternatives" },
-  { value: "cash", label: "Cash" },
+  { value: "unlisted", label: "Unlisted" },
 ];
 
 const VEHICLE_OPTIONS: { value: VehicleFilter; label: string }[] = [
@@ -185,9 +186,9 @@ export function GlobalFilters() {
           </Select>
         </div>
 
-        {/* Column 4: Vehicle */}
+        {/* Column 4: Instrument */}
         <div className="flex flex-col gap-1.5 min-w-0">
-          <span className={labelClass}>Vehicle</span>
+          <span className={labelClass}>Instrument</span>
           <Select value={vehicleFilter} onValueChange={(v) => setFilters({ vehicleFilter: v as VehicleFilter })}>
             <SelectTrigger className={selectTriggerClass}>
               <SelectValue placeholder="All" />

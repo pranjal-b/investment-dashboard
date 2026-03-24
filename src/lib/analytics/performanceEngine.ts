@@ -3,7 +3,7 @@
  * Rolling 1Y/3Y XIRR and excess.
  */
 
-import type { Holding } from "@/lib/types";
+import type { AllocationSleeve, AssetType, Holding } from "@/lib/types";
 import type {
   FYPerformance,
   MonthReturn,
@@ -14,21 +14,17 @@ import type {
   FYPerformanceByVehicle,
   VehicleMonthReturn,
 } from "./types";
-import type { AssetType } from "@/lib/types";
 import { computeXIRR, aggregateCashflows, periodReturnPctFromXIRR } from "@/lib/calculations/xirr";
 import { startOfMonth, endOfMonth, subMonths, format } from "date-fns";
+import { getAllocationSleeve } from "@/lib/classification/sleeveClassifier";
 
-type MacroClassId = "equity" | "debt" | "alternatives";
-
-const ASSET_TYPE_TO_MACRO: Record<Holding["assetType"], MacroClassId> = {
-  Equity: "equity",
-  MutualFund: "equity",
-  PMS: "equity",
-  ETF: "equity",
-  IndexFund: "equity",
-  DebtMF: "debt",
-  AIF: "alternatives",
-};
+const SLEEVE_ORDER: AllocationSleeve[] = [
+  "liquid",
+  "debt",
+  "equity",
+  "alternatives",
+  "unlisted",
+];
 
 export interface PerformanceEngineInput {
   holdings: Holding[];
@@ -132,19 +128,20 @@ export function getFYPerformanceByCategory(input: PerformanceEngineInput): FYPer
   const { holdings, fy, benchmarkSeries } = input;
   const { start: fyStart, end: fyEnd } = parseFY(fy);
 
-  const byMacro = new Map<MacroClassId, Holding[]>();
-  byMacro.set("equity", []);
-  byMacro.set("debt", []);
-  byMacro.set("alternatives", []);
+  const bySleeve = new Map<AllocationSleeve, Holding[]>();
+  for (const s of SLEEVE_ORDER) bySleeve.set(s, []);
 
   for (const h of holdings) {
-    const macro = ASSET_TYPE_TO_MACRO[h.assetType] ?? "equity";
-    byMacro.get(macro)!.push(h);
+    const sleeve = getAllocationSleeve(h);
+    bySleeve.get(sleeve)!.push(h);
   }
 
-  const cashflowsByMacro = new Map<MacroClassId, { date: string; amount: number }[]>();
-  for (const [macro, list] of byMacro) {
-    cashflowsByMacro.set(macro, aggregateCashflows(list));
+  const cashflowsBySleeve = new Map<
+    AllocationSleeve,
+    { date: string; amount: number }[]
+  >();
+  for (const [sleeve, list] of bySleeve) {
+    cashflowsBySleeve.set(sleeve, aggregateCashflows(list));
   }
   const allCashflows = aggregateCashflows(holdings);
   const portfolioCashflows = allCashflows.map((c) => ({ date: c.date, amount: c.amount, type: "nav" as const }));
@@ -156,16 +153,24 @@ export function getFYPerformanceByCategory(input: PerformanceEngineInput): FYPer
     const monthEnd = endOfMonth(cursor);
     const range: [Date, Date] = [monthStart, monthEnd];
 
-    const equityIrr = computeXIRR(
-      cashflowsByMacro.get("equity")!.map((c) => ({ ...c, type: "nav" as const })),
+    const liquidIrr = computeXIRR(
+      cashflowsBySleeve.get("liquid")!.map((c) => ({ ...c, type: "nav" as const })),
       range
     );
     const debtIrr = computeXIRR(
-      cashflowsByMacro.get("debt")!.map((c) => ({ ...c, type: "nav" as const })),
+      cashflowsBySleeve.get("debt")!.map((c) => ({ ...c, type: "nav" as const })),
+      range
+    );
+    const equityIrr = computeXIRR(
+      cashflowsBySleeve.get("equity")!.map((c) => ({ ...c, type: "nav" as const })),
       range
     );
     const alternativesIrr = computeXIRR(
-      cashflowsByMacro.get("alternatives")!.map((c) => ({ ...c, type: "nav" as const })),
+      cashflowsBySleeve.get("alternatives")!.map((c) => ({ ...c, type: "nav" as const })),
+      range
+    );
+    const unlistedIrr = computeXIRR(
+      cashflowsBySleeve.get("unlisted")!.map((c) => ({ ...c, type: "nav" as const })),
       range
     );
     const portfolioIrr = computeXIRR(portfolioCashflows, range);
@@ -175,9 +180,12 @@ export function getFYPerformanceByCategory(input: PerformanceEngineInput): FYPer
 
     monthOnMonth.push({
       month: format(monthStart, "MMM yyyy"),
-      equity: equityIrr != null ? periodReturnPctFromXIRR(equityIrr, range) : null,
+      liquid: liquidIrr != null ? periodReturnPctFromXIRR(liquidIrr, range) : null,
       debt: debtIrr != null ? periodReturnPctFromXIRR(debtIrr, range) : null,
-      alternatives: alternativesIrr != null ? periodReturnPctFromXIRR(alternativesIrr, range) : null,
+      equity: equityIrr != null ? periodReturnPctFromXIRR(equityIrr, range) : null,
+      alternatives:
+        alternativesIrr != null ? periodReturnPctFromXIRR(alternativesIrr, range) : null,
+      unlisted: unlistedIrr != null ? periodReturnPctFromXIRR(unlistedIrr, range) : null,
       portfolio: portfolioIrr != null ? periodReturnPctFromXIRR(portfolioIrr, range) : 0,
       benchmark: benchmarkReturn,
     });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { Fragment, useState, useMemo } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -25,6 +25,7 @@ import { ChevronDown, ChevronRight, Search } from "lucide-react";
 import { useFilteredHoldings } from "@/lib/store/dashboardStore";
 import { computeAssetMetrics } from "@/lib/calculations/metrics";
 import type { Holding } from "@/lib/types";
+import { getAllocationSleeve } from "@/lib/classification/sleeveClassifier";
 import { RowExpandableContent } from "./RowExpandableContent";
 import { useDashboardStore } from "@/lib/store/dashboardStore";
 import { cn } from "@/lib/utils";
@@ -95,6 +96,25 @@ export function HoldingsTable() {
           <span className="text-slate-500 text-sm">{info.getValue()}</span>
         ),
       }),
+      {
+        id: "sleeve",
+        header: "Sleeve",
+        cell: ({ row }) => (
+          <span className="text-slate-600 text-xs capitalize">{getAllocationSleeve(row.original)}</span>
+        ),
+      },
+      {
+        id: "subtype",
+        header: "Subtype",
+        cell: ({ row }) => {
+          const st = row.original.instrumentSubtype;
+          return (
+            <span className="text-slate-500 text-xs">
+              {st ? st.replace(/_/g, " ") : "—"}
+            </span>
+          );
+        },
+      },
       columnHelper.accessor("investedAmount", {
         header: "Invested",
         cell: (info) => (
@@ -145,7 +165,7 @@ export function HoldingsTable() {
         ),
       }),
     ],
-    [dateRange, expandedRows]
+    [dateRange]
   );
 
   const table = useReactTable({
@@ -218,9 +238,8 @@ export function HoldingsTable() {
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows.map((row) => (
-              <>
+              <Fragment key={row.original.id}>
                 <TableRow
-                  key={row.id}
                   className="border-b border-slate-100 hover:bg-slate-50 transition-colors duration-150"
                 >
                   {row.getVisibleCells().map((cell) => {
@@ -253,7 +272,7 @@ export function HoldingsTable() {
                     </TableCell>
                   </TableRow>
                 )}
-              </>
+              </Fragment>
             ))}
           </TableBody>
         </Table>

@@ -1,3 +1,15 @@
+/**
+ * GET /api/holdings
+ *
+ * Returns `{ holdings: Holding[] }` shaped like `src/data/mock-holdings.json`.
+ * Optional fields (for five-sleeve taxonomy & bond treasury):
+ * - `allocationSleeve`, `instrumentSubtype`, `unlistedStage`, `equityMandate`
+ * - `bondCollateralType` ("secured" | "unsecured" | "unknown"), `bondSeniority`, `creditRating`
+ * - Nested line objects: `fundFolio`, `bankAccount`, `shortMaturityBond`, `directEquity`,
+ *   `feederFund`, `equityEtf`, `equityMf`, `goldEtf`, `reitInvit`, `peDirectEarly`, `peGrowth`
+ *
+ * The API assigns rotating `portfolioType` (Core/New/Old) for demo filters.
+ */
 import { NextResponse } from "next/server";
 import holdingsData from "@/data/mock-holdings.json";
 import type { Holding } from "@/lib/types";

@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import ReactECharts from "echarts-for-react";
 import type { Holding } from "@/lib/types";
 import { computeAssetMetrics } from "@/lib/calculations/metrics";
 import { useDashboardStore } from "@/lib/store/dashboardStore";
+import { SubtypeFolioPanel } from "./SubtypeFolioPanel";
 
 function formatChartDate(iso: string): string {
   const d = new Date(iso);
@@ -32,25 +33,42 @@ interface RowExpandableContentProps {
 
 export function RowExpandableContent({ holding }: RowExpandableContentProps) {
   const dateRange = useDashboardStore((s) => s.filters.dateRange);
+  const [sinceInception, setSinceInception] = useState(false);
+
+  const effectiveDateRange = sinceInception ? null : dateRange;
   const metrics = useMemo(
-    () => computeAssetMetrics(holding, dateRange ?? undefined),
-    [holding, dateRange]
+    () => computeAssetMetrics(holding, effectiveDateRange ?? undefined),
+    [holding, effectiveDateRange]
   );
 
   const cashflowData = useMemo(() => {
     const sorted = [...holding.transactions].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
-    let cumulative = 0;
-    return sorted.map((t) => {
-      cumulative += t.amount;
-      return {
-        date: t.date,
-        amount: t.amount,
-        cumulative,
-      };
+    const start = dateRange?.[0] ? new Date(dateRange[0]) : null;
+    const end = dateRange?.[1] ? new Date(dateRange[1]) : null;
+    const usePeriod = !sinceInception && start && end;
+
+    if (!usePeriod) {
+      let cumulative = 0;
+      return sorted.map((t) => {
+        cumulative += t.amount;
+        return { date: t.date, amount: t.amount, cumulative };
+      });
+    }
+    const openingCumulative = sorted
+      .filter((t) => new Date(t.date) < start)
+      .reduce((s, t) => s + t.amount, 0);
+    const inRange = sorted.filter((t) => {
+      const d = new Date(t.date);
+      return d >= start && d <= end;
     });
-  }, [holding.transactions]);
+    let cumulative = openingCumulative;
+    return inRange.map((t) => {
+      cumulative += t.amount;
+      return { date: t.date, amount: t.amount, cumulative };
+    });
+  }, [holding.transactions, dateRange, sinceInception]);
 
   const cashflowChartOption = useMemo(
     () => ({
@@ -103,18 +121,29 @@ export function RowExpandableContent({ holding }: RowExpandableContentProps) {
     [cashflowData]
   );
 
-  const benchmarkMeta = useMemo(() => {
+  const benchmarkHistoryFiltered = useMemo(() => {
     const bh = holding.benchmarkHistory ?? [];
+    const start = dateRange?.[0] ? new Date(dateRange[0]) : null;
+    const end = dateRange?.[1] ? new Date(dateRange[1]) : null;
+    if (sinceInception || !start || !end) return bh;
+    return bh.filter((b) => {
+      const d = new Date(b.date);
+      return d >= start && d <= end;
+    });
+  }, [holding.benchmarkHistory, dateRange, sinceInception]);
+
+  const benchmarkMeta = useMemo(() => {
+    const bh = benchmarkHistoryFiltered;
     if (bh.length < 2) return null;
     const first = bh[0].value;
     const last = bh[bh.length - 1].value;
     const benchmarkReturnPct = first !== 0 ? ((last - first) / first) * 100 : 0;
     const alphaPct = metrics.xirrPct != null ? metrics.xirrPct - benchmarkReturnPct : null;
     return { benchmarkReturnPct, alphaPct };
-  }, [holding.benchmarkHistory, metrics.xirrPct]);
+  }, [benchmarkHistoryFiltered, metrics.xirrPct]);
 
   const benchmarkOption = useMemo(() => {
-    const bh = holding.benchmarkHistory ?? [];
+    const bh = benchmarkHistoryFiltered;
     if (bh.length < 2) return null;
     const labels = bh.map((b) => formatChartDate(b.date));
     return {
@@ -154,12 +183,41 @@ export function RowExpandableContent({ holding }: RowExpandableContentProps) {
         },
       ],
     };
-  }, [holding.benchmarkHistory, holding.benchmark]);
+  }, [benchmarkHistoryFiltered, holding.benchmark]);
 
   const chartHeight = 200;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="space-y-4">
+      <SubtypeFolioPanel holding={holding} />
+      <div className="flex items-center justify-end gap-2">
+        <span className="text-xs text-slate-500">Chart range:</span>
+        <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5">
+          <button
+            type="button"
+            onClick={() => setSinceInception(false)}
+            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              !sinceInception
+                ? "bg-slate-100 text-slate-900"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            Selected period
+          </button>
+          <button
+            type="button"
+            onClick={() => setSinceInception(true)}
+            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              sinceInception
+                ? "bg-slate-100 text-slate-900"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            Since inception
+          </button>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div className="bg-white rounded-xl border border-slate-200 p-4 min-w-0">
         <h4 className="text-sm font-medium text-slate-800 mb-2 border-b border-slate-100 pb-2">
           Cashflow Timeline
@@ -223,6 +281,7 @@ export function RowExpandableContent({ holding }: RowExpandableContentProps) {
         ) : (
           <p className="text-sm text-slate-500 py-6">No benchmark history</p>
         )}
+      </div>
       </div>
     </div>
   );

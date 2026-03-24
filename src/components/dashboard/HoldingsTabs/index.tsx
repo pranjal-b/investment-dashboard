@@ -1,39 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useFilteredHoldings, useHoldingPeriodReturns, useFormatINR } from "@/lib/store/dashboardStore";
-import type { AllocationBucketId } from "@/lib/types";
+import type { AllocationSleeve } from "@/lib/types";
+import { getAllocationSleeve } from "@/lib/classification/sleeveClassifier";
 
-const BUCKET_ORDER: AllocationBucketId[] = [
-  "DirectEquity",
-  "EquityMF",
-  "DebtMF",
-  "PMS",
-  "AIF",
-  "ETF",
-  "IndexFund",
-  "AlternativeFOF",
+const SLEEVE_ORDER: AllocationSleeve[] = [
+  "liquid",
+  "debt",
+  "equity",
+  "alternatives",
+  "unlisted",
 ];
-const BUCKET_LABELS: Record<string, string> = {
-  DirectEquity: "Direct Equity",
-  EquityMF: "Equity MF",
-  DebtMF: "Debt MF",
-  PMS: "PMS",
-  AIF: "AIF",
-  ETF: "ETF",
-  IndexFund: "Index Fund",
-  AlternativeFOF: "Alternatives",
-};
 
-const ASSET_TO_BUCKET: Record<string, string> = {
-  Equity: "DirectEquity",
-  MutualFund: "EquityMF",
-  DebtMF: "DebtMF",
-  PMS: "PMS",
-  AIF: "AIF",
-  ETF: "ETF",
-  IndexFund: "IndexFund",
+const SLEEVE_LABELS: Record<AllocationSleeve, string> = {
+  liquid: "Liquid & equivalents",
+  debt: "Debt",
+  equity: "Equity",
+  alternatives: "Alternatives",
+  unlisted: "Unlisted",
 };
 
 function formatPct(v: number | null): string {
@@ -42,38 +28,51 @@ function formatPct(v: number | null): string {
 }
 
 export function HoldingsTabs() {
-  const [activeBucket, setActiveBucket] = useState<string>("DirectEquity");
   const holdings = useFilteredHoldings();
   const holdingReturns = useHoldingPeriodReturns();
   const formatINR = useFormatINR();
-  const byBucket = new Map<string, typeof holdings>();
-  for (const h of holdings) {
-    const b = ASSET_TO_BUCKET[h.assetType] ?? "EquityMF";
-    if (!byBucket.has(b)) byBucket.set(b, []);
-    byBucket.get(b)!.push(h);
-  }
-  const returnsByHoldingId = new Map(holdingReturns.map((r) => [r.holdingId, r]));
-  const currentHoldings = byBucket.get(activeBucket) ?? [];
+
+  const bySleeve = useMemo(() => {
+    const m = new Map<AllocationSleeve, typeof holdings>();
+    for (const s of SLEEVE_ORDER) m.set(s, []);
+    for (const h of holdings) {
+      const s = getAllocationSleeve(h);
+      m.get(s)!.push(h);
+    }
+    return m;
+  }, [holdings]);
+
+  const [activeSleeve, setActiveSleeve] = useState<AllocationSleeve>("equity");
+
+  const returnsByHoldingId = useMemo(
+    () => new Map(holdingReturns.map((r) => [r.holdingId, r])),
+    [holdingReturns]
+  );
+
+  const visibleTabs = SLEEVE_ORDER.filter((s) => (bySleeve.get(s) ?? []).length > 0);
+  const displaySleeve =
+    visibleTabs.includes(activeSleeve) ? activeSleeve : visibleTabs[0] ?? activeSleeve;
+  const currentHoldings = bySleeve.get(displaySleeve) ?? [];
 
   return (
     <Card className="border-0 shadow-[0_1px_3px_rgba(0,0,0,0.04)] rounded-2xl overflow-hidden">
       <CardHeader className="pb-2">
-        <h2 className="text-base font-semibold">Holdings by Bucket</h2>
-        <p className="text-xs text-muted-foreground">Performance by asset bucket</p>
+        <h2 className="text-base font-semibold">Holdings by sleeve</h2>
+        <p className="text-xs text-muted-foreground">Performance grouped by allocation sleeve</p>
       </CardHeader>
       <CardContent>
         <div className="flex flex-wrap gap-1 border-b border-border pb-2 mb-2">
-          {BUCKET_ORDER.filter((b) => byBucket.has(b)).map((bucketId) => (
+          {visibleTabs.map((sleeveId) => (
             <button
-              key={bucketId}
-              onClick={() => setActiveBucket(bucketId)}
+              key={sleeveId}
+              onClick={() => setActiveSleeve(sleeveId)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                activeBucket === bucketId
+                displaySleeve === sleeveId
                   ? "bg-accent text-accent-foreground"
                   : "text-muted-foreground hover:bg-muted"
               }`}
             >
-              {BUCKET_LABELS[bucketId] ?? bucketId}
+              {SLEEVE_LABELS[sleeveId]}
             </button>
           ))}
         </div>

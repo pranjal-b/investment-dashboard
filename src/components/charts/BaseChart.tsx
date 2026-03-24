@@ -10,6 +10,7 @@ interface BaseChartProps {
   height?: number;
   className?: string;
   style?: React.CSSProperties;
+  onEvents?: React.ComponentProps<typeof ReactECharts>["onEvents"];
 }
 
 /** Wrapper that merges option with centralized theme and applies minimal container styling */
@@ -18,6 +19,7 @@ export function BaseChart({
   height = 280,
   className,
   style,
+  onEvents,
 }: BaseChartProps) {
   const themedOption = useMemo(() => {
     const theme = createModernTheme();
@@ -41,6 +43,7 @@ export function BaseChart({
         option={themedOption}
         style={{ height }}
         opts={{ renderer: "canvas" }}
+        onEvents={onEvents}
         notMerge
       />
     </div>

@@ -5,6 +5,7 @@
 
 import type { Holding } from "@/lib/types";
 import type { RiskMetrics, DebtRisk } from "./types";
+import { getAllocationSleeve } from "@/lib/classification/sleeveClassifier";
 
 export interface RiskEngineInput {
   holdings: Holding[];
@@ -67,9 +68,7 @@ export function getRiskMetrics(input: RiskEngineInput): RiskMetrics {
 }
 
 export function getDebtRisk(input: RiskEngineInput): DebtRisk {
-  const debtHoldings = input.holdings.filter(
-    (h) => h.assetType === "DebtMF" || (h.assetType === "MutualFund" && h.creditRating)
-  );
+  const debtHoldings = input.holdings.filter((h) => getAllocationSleeve(h) === "debt");
   const total = debtHoldings.reduce((s, h) => s + h.currentValue, 0);
   if (total === 0) {
     return {
