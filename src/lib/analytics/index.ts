@@ -14,9 +14,24 @@ export {
   getRebalanceInsight,
   getAllocationHealthScore,
   getTopHoldingsByDeviation,
+  getAllocationSleeveBreakdown,
 } from "./allocationAnalytics";
 
-export { getReturnMetrics, getPeriodReturns, getHoldingPeriodReturns, getBucketPeriodReturns, PERFORMANCE_MATRIX_PERIODS } from "./returnEngine";
+export type {
+  SleeveChildBucketRow,
+  SleeveAllocationBreakdownRow,
+  SleeveBreakdownInput,
+} from "./allocationAnalytics";
+
+export { getPolicyAllocationTree } from "./policyAllocationTree";
+export type { PolicyAllocationTreeNode, PolicyAllocationTreeInput } from "./policyAllocationTree";
+
+export {
+  isEquityPolicyPath,
+  getPolicyRowBenchmarkContext,
+} from "./policyBenchmarkScope";
+
+export { getReturnMetrics, getPeriodReturns, getHoldingPeriodReturns, getPerformanceMatrixTree, PERFORMANCE_MATRIX_PERIODS } from "./returnEngine";
 export type { ReturnEngineInput, HoldingPeriodReturn } from "./returnEngine";
 
 export { getRiskMetrics, getDebtRisk } from "./riskEngine";
@@ -25,10 +40,67 @@ export type { RiskEngineInput } from "./riskEngine";
 export { getPolicyChecks } from "./complianceEngine";
 export type { ComplianceEngineInput } from "./complianceEngine";
 
-export { getFYPerformance, getFYPerformanceByCategory, getFYPerformanceByVehicle, getRollingPerformance } from "./performanceEngine";
+export {
+  getFYPerformance,
+  getFYPerformanceByCategory,
+  getFYPerformanceByVehicle,
+  getFYPerformanceByPolicyCategory,
+  getFYPerformanceByPolicySubcategory,
+  getFYPerformanceBySector,
+  getFYPerformanceByMarketCap,
+  getRollingPerformance,
+} from "./performanceEngine";
 export type { PerformanceEngineInput } from "./performanceEngine";
 
 export { getBondTreasuryDiagnostics, normalizeCreditRating } from "./bondCreditEngine";
+
+export {
+  splitUnrealizedGainStLt,
+  getEarliestAcquisitionDate,
+  longTermMonthsThreshold,
+  holdingUnrealizedIsLongTerm,
+} from "./unrealizedStLt";
+
+export { sumIdleBankBalances } from "./liquidityEngine";
+
+export {
+  isLiquidEquivalentHolding,
+  filterLiquidEquivalentHoldings,
+  getLiquidEquivalentHoldings,
+  getBankNameForFd,
+  getHoldingLiquidityBucket,
+  getLiquidEquivalentsSummary,
+  getFDAllocationBreakdown,
+  getFDCallableSplit,
+  getLEReturnsSplit,
+  getLiquidityBucketActuals,
+  getLiquidityBucketGaps,
+  simulateFDLiquidation,
+  simulateFDLiquidationFromHoldings,
+  buildLiquidEquivalentsAnalyticsBase,
+  normalizeIdealBuckets,
+  DEFAULT_IDEAL_LIQUIDITY_BUCKETS,
+  getLEHoldings,
+  asOfDateFromFilters,
+} from "./liquidEquivalentsEngine";
+export type {
+  LEBucketKey,
+  LiquidityBucketId,
+  LESegment,
+  LiquidEquivalentsSummary,
+  LiquidEquivalentsSummaryRow,
+  FDAllocationSlice,
+  FDCallableSplit,
+  LEReturnsSegmentRow,
+  LiquidityBucketActuals,
+  IdealLiquidityBucketINR,
+  LiquidityBucketGapRow,
+  FDLiquidationSimResult,
+  FDLiquidationFromHoldingsInput,
+  FDLiquidationFromHoldingsResult,
+  LiquidEquivalentsAnalyticsBase,
+  LiquidEquivalentsAnalytics,
+} from "./liquidEquivalentsEngine";
 
 export type {
   PortfolioSnapshot,
@@ -51,7 +123,7 @@ export type {
   MonthReturn,
   QuarterlyReturn,
   RollingPerformancePoint,
-  BucketPeriodReturn,
+  PerformanceMatrixTreeNode,
   BondTreasuryDiagnostics,
   BondSplitSlice,
   NormalizedRatingKey,

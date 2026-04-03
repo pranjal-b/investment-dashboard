@@ -26,6 +26,10 @@ export type InstrumentSubtype =
   | "arbitrage"
   | "credit_fund"
   | "bank_balance"
+  | "fixed_deposit"
+  | "tax_free_bond"
+  | "venture_debt"
+  | "debt_aif"
   | "short_maturity_bond"
   | "direct_equity"
   | "feeder_fund"
@@ -83,6 +87,23 @@ export interface BankBalanceLine {
   balanceAsOfDate?: string;
 }
 
+/** Per-deposit fields when `instrumentSubtype` is `fixed_deposit` */
+export interface FixedDepositLine {
+  bankName?: string;
+  /** ISO date; non-callable liquidity uses calendar days to maturity */
+  maturityDate?: string;
+  /** When absent, analytics treat the FD as non-callable */
+  isCallable?: boolean;
+  /** Annual coupon %; falls back to `Holding.ytm` when absent where relevant */
+  couponAnnualPct?: number;
+  /** Premature withdrawal penalty as annual % (calculator default when absent) */
+  prematurePenaltyAnnualPct?: number;
+  /** Override days-to-liquidity without further schema changes */
+  effectiveLiquidityDays?: number;
+  /** Optional liquidity-bucket override for callable / special cases */
+  tenorBucket?: "d0_1" | "d1_3" | "d3_5" | "d5p";
+}
+
 export interface ShortMaturityBondLine extends FundFolioLine {
   maturityDate?: string;
   ytmAtInvestmentPct?: number | null;
@@ -98,6 +119,11 @@ export interface DirectEquityLine {
 
 export interface PeDirectEarlyLine {
   costValue?: number;
+  /** Partnership units / commitment share (SOA) */
+  units?: number;
+  scriptCode?: string;
+  advisorName?: string;
+  depositoryParticipant?: string;
   profitRs?: number;
   incomeRs?: number;
   capitalRs?: number;
@@ -227,17 +253,19 @@ export interface Holding {
   ytm?: number;
   firstNavDate?: string;
   inceptionDate?: string;
-  /** Portfolio bucket: Core, New, or Old (for portfolio filter) */
+  /** Portfolio bucket: Core, New, or Old */
   portfolioType?: "Core" | "New" | "Old";
   /** API override; wins in getAllocationSleeve */
   allocationSleeve?: AllocationSleeve;
-  instrumentSubtype?: InstrumentSubtype;
+  /** Drives sleeve before assetType; union or free string for API flexibility */
+  instrumentSubtype?: InstrumentSubtype | string;
   unlistedStage?: string;
   equityMandate?: EquityMandate;
   bondCollateralType?: BondCollateralType;
   bondSeniority?: BondSeniority;
   fundFolio?: FundFolioLine;
   bankAccount?: BankBalanceLine;
+  fixedDeposit?: FixedDepositLine;
   shortMaturityBond?: ShortMaturityBondLine;
   directEquity?: DirectEquityLine;
   feederFund?: FundFolioLine & { scriptCodes?: string[] };
@@ -250,14 +278,13 @@ export interface Holding {
     distributionsCurrentValue?: number;
     /** Growth-stage NAV / unit (per SOA) */
     nav?: number | null;
+    /** As-on date for NAV (SOA) */
+    valuationAsOfDate?: string;
     soaReconciled?: boolean;
     /** Ops verification / checklist */
     reviewCheck?: boolean;
   };
 }
-
-/** Portfolio filter: Core, Satellite (= New), Legacy (= Old) */
-export type PortfolioFilter = "all" | "Core" | "New" | "Old";
 
 export interface PortfolioMetrics {
   totalInvested: number;
@@ -342,18 +369,20 @@ export interface DashboardFilters {
   valueMode: ValueMode;
   gainFilter: GainFilter;
   selectedSector: string | null; // For drilldown
-  /** Scope: All | Equity | Debt | Alternatives | Cash */
+  /** @deprecated Scope filter; replaced by policyCategory1/category2. Kept for persisted state. */
   scopeAssetClass?: ScopeAssetClass;
-  /** Vehicle: All | Direct | MF | PMS | AIF | ETF | Index | FOF */
+  /** @deprecated Vehicle filter; replaced by policy categories. */
   vehicleFilter?: VehicleFilter;
+  /** Investment policy category 1 (liquid, debt, equity, …). `"all"` = no filter. */
+  policyCategory1?: string;
+  /** Sub-category under category 1. `"all"` = all sub-categories. Only applies when category 1 is set. */
+  policyCategory2?: string;
   /** Date range preset; when "custom", dateRange is user-defined */
   dateRangePreset?: DateRangePreset;
   /** Multi-select: bucket ids (legacy) */
   coreBucketSelection?: string[];
   /** Multi-select: sub-category option values (legacy) */
   coreSubCategorySelection?: string[];
-  /** Portfolio: All | Core | Satellite (New) | Legacy (Old) */
-  portfolioFilter?: PortfolioFilter;
   /** FY for performance screen e.g. "2024-25" (Apr–Mar) */
   fy?: string;
   /** Net cash flow window in days (e.g. 30 for last month) */
@@ -374,8 +403,13 @@ export interface DashboardFilters {
   performanceBenchmarks?: string[];
   /** Y-axis mode: value (₹) | return (%) | indexed (100) */
   performanceYAxisMode?: "value" | "return" | "indexed";
-  /** FY Performance view: portfolio (aggregate) | assetClass | vehicle */
-  performanceViewBy?: "portfolio" | "assetClass" | "vehicle";
+  /** FY Performance trend breakdown: policy category / sub-category / sector / market cap */
+  performanceViewBy?: "category" | "subcategory" | "sector" | "marketCap";
   /** Performance Matrix data source: live (from holdings) or sample scenario */
   performanceMatrixScenario?: "live" | "moderate" | "conservative" | "bull";
+  /**
+   * Pitch/demo: when true, missing segment MoM % are filled with mild synthetic returns.
+   * Set false to opt out of Auto demo fills for current/next FY. Omit = default behavior.
+   */
+  performancePitchSample?: boolean;
 }

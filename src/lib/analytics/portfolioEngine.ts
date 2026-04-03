@@ -42,6 +42,10 @@ function computeBenchmarkXIRR(
   return cagr;
 }
 
+function toDateStr(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
 /**
  * Build portfolio snapshot from filtered holdings and options.
  */
@@ -61,12 +65,17 @@ export function getPortfolioSnapshot(input: PortfolioEngineInput): PortfolioSnap
   }, 0);
   const unrealizedGain = absoluteGainRs - realizedGain;
 
-  const cashflows = aggregateCashflows(holdings).map((c) => ({
+  const rawCashflows = aggregateCashflows(holdings).map((c) => ({
     date: c.date,
     amount: c.amount,
     type: "nav" as const,
   }));
-  const portfolioXIRR = computeXIRR(cashflows, dateRange);
+  const asOf = dateRange?.[1] ?? new Date();
+  const cashflowsForXirr = [
+    ...rawCashflows,
+    { date: toDateStr(asOf), amount: totalMarketValue, type: "nav" as const },
+  ];
+  const portfolioXIRR = computeXIRR(cashflowsForXirr, dateRange);
   const portfolioXIRRPct = portfolioXIRR != null ? portfolioXIRR * 100 : null;
   const benchmarkXIRR = input.benchmarkSeries
     ? computeBenchmarkXIRR(input.benchmarkSeries, dateRange)
@@ -79,7 +88,7 @@ export function getPortfolioSnapshot(input: PortfolioEngineInput): PortfolioSnap
 
   const now = new Date();
   const windowStart = subDays(now, netCashFlowDays);
-  const netCashFlowLastMonth = cashflows
+  const netCashFlowLastMonth = rawCashflows
     .filter((c) => {
       const d = new Date(c.date);
       return d >= windowStart && d <= now;

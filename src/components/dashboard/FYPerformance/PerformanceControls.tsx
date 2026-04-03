@@ -1,6 +1,6 @@
 "use client";
 
-import { useDashboardStore } from "@/lib/store/dashboardStore";
+import { useDashboardStore, normalizePerformanceViewBy } from "@/lib/store/dashboardStore";
 import { getSelectableFYList } from "@/lib/performance/fyEngine";
 import { BENCHMARK_LABELS } from "@/lib/performance/benchmarkEngine";
 import {
@@ -42,9 +42,10 @@ const Y_AXIS_OPTIONS = [
 ];
 
 const VIEW_BY_OPTIONS = [
-  { value: "portfolio" as const, label: "Portfolio" },
-  { value: "assetClass" as const, label: "Asset class" },
-  { value: "vehicle" as const, label: "Instrument" },
+  { value: "category" as const, label: "Category" },
+  { value: "subcategory" as const, label: "Sub-category" },
+  { value: "sector" as const, label: "Sector" },
+  { value: "marketCap" as const, label: "Market Cap" },
 ];
 
 const LABEL_CLASS =
@@ -65,8 +66,13 @@ export function PerformanceControls() {
   const performanceBenchmarks = filters.performanceBenchmarks ?? ["nifty50"];
   const performanceYAxisMode = (filters.performanceYAxisMode ??
     "indexed") as "value" | "return" | "indexed";
-  const performanceViewBy = (filters.performanceViewBy ??
-    "portfolio") as "portfolio" | "assetClass" | "vehicle";
+  const performanceViewBy = normalizePerformanceViewBy(filters.performanceViewBy);
+  const pitchMoMMode: "auto" | "on" | "off" =
+    filters.performancePitchSample === true
+      ? "on"
+      : filters.performancePitchSample === false
+        ? "off"
+        : "auto";
 
   const fyList = getSelectableFYList();
 
@@ -88,7 +94,7 @@ export function PerformanceControls() {
             value={performanceViewBy}
             onValueChange={(v) =>
               setFilters({
-                performanceViewBy: v as "portfolio" | "assetClass" | "vehicle",
+                performanceViewBy: normalizePerformanceViewBy(v),
               })}
           >
             <SelectTrigger className={SELECT_TRIGGER_CLASS + " w-[10rem]"}>
@@ -143,6 +149,49 @@ export function PerformanceControls() {
                   {opt.label}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Pitch/demo: synthetic fill for null segment MoM % */}
+        <div className="flex flex-col gap-1 shrink-0">
+          <div className="flex items-center gap-1">
+            <span className={LABEL_CLASS + " mb-0"}>MoM gaps</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  className="inline-flex text-slate-400 hover:text-slate-600 cursor-help focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-1 rounded"
+                  tabIndex={0}
+                >
+                  <Info className="h-3.5 w-3.5" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent
+                side="top"
+                className="bg-slate-800 text-slate-100 text-xs font-normal rounded-md px-2.5 py-1.5 max-w-[240px] border-0"
+              >
+                Demo only: fills missing monthly segment and benchmark returns with small
+                deterministic values so Indexed 100 lines move. Auto enables for the current
+                and next Indian FY. Off uses real XIRR / index levels only.
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <Select
+            value={pitchMoMMode}
+            onValueChange={(v) =>
+              setFilters({
+                performancePitchSample:
+                  v === "on" ? true : v === "off" ? false : undefined,
+              })
+            }
+          >
+            <SelectTrigger className={SELECT_TRIGGER_CLASS + " w-[7.5rem]"}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="auto">Auto</SelectItem>
+              <SelectItem value="on">Demo</SelectItem>
+              <SelectItem value="off">Off</SelectItem>
             </SelectContent>
           </Select>
         </div>

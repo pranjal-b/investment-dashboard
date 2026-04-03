@@ -3,7 +3,8 @@
  * Rolling 1Y/3Y XIRR and excess.
  */
 
-import type { AllocationSleeve, AssetType, Holding } from "@/lib/types";
+import type { AllocationSleeve, AssetType, Holding, Transaction } from "@/lib/types";
+import { getInvestmentPolicyPath } from "@/lib/classification/investmentPolicyCategory";
 import type {
   FYPerformance,
   MonthReturn,
@@ -195,6 +196,125 @@ export function getFYPerformanceByCategory(input: PerformanceEngineInput): FYPer
   return { fy, monthOnMonth };
 }
 
+function fyPerformanceVehicleShapeFromCashflowGroups(
+  fy: string,
+  fyStart: Date,
+  fyEnd: Date,
+  cashflowsByKey: Map<string, { date: string; amount: number }[]>
+): FYPerformanceByVehicle {
+  const monthOnMonth: VehicleMonthReturn[] = [];
+  const cursor = new Date(fyStart);
+  while (cursor <= fyEnd) {
+    const monthStart = startOfMonth(cursor);
+    const monthEnd = endOfMonth(cursor);
+    const range: [Date, Date] = [monthStart, monthEnd];
+
+    const returns: Record<string, number | null> = {};
+    for (const [key, cf] of cashflowsByKey) {
+      const irr = computeXIRR(cf.map((c) => ({ ...c, type: "nav" as const })), range);
+      returns[key] = irr != null ? periodReturnPctFromXIRR(irr, range) : null;
+    }
+
+    monthOnMonth.push({
+      month: format(monthStart, "MMM yyyy"),
+      returns,
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  return { fy, monthOnMonth };
+}
+
+/** FY Performance by investment policy category (L1). */
+export function getFYPerformanceByPolicyCategory(
+  input: PerformanceEngineInput
+): FYPerformanceByVehicle {
+  const { holdings, fy } = input;
+  const { start: fyStart, end: fyEnd } = parseFY(fy);
+  const byKey = new Map<string, Holding[]>();
+  for (const h of holdings) {
+    const path = getInvestmentPolicyPath(h);
+    const key = path[0] ?? "unknown";
+    if (!byKey.has(key)) byKey.set(key, []);
+    byKey.get(key)!.push(h);
+  }
+  const cashflowsByKey = new Map<string, { date: string; amount: number }[]>();
+  for (const [k, list] of byKey) {
+    cashflowsByKey.set(k, aggregateCashflows(list));
+  }
+  return fyPerformanceVehicleShapeFromCashflowGroups(fy, fyStart, fyEnd, cashflowsByKey);
+}
+
+/** FY Performance by investment policy sub-category (deepest path segment). */
+export function getFYPerformanceByPolicySubcategory(
+  input: PerformanceEngineInput
+): FYPerformanceByVehicle {
+  const { holdings, fy } = input;
+  const { start: fyStart, end: fyEnd } = parseFY(fy);
+  const byKey = new Map<string, Holding[]>();
+  for (const h of holdings) {
+    const path = getInvestmentPolicyPath(h);
+    const key = path.length ? path[path.length - 1]! : "unknown";
+    if (!byKey.has(key)) byKey.set(key, []);
+    byKey.get(key)!.push(h);
+  }
+  const cashflowsByKey = new Map<string, { date: string; amount: number }[]>();
+  for (const [k, list] of byKey) {
+    cashflowsByKey.set(k, aggregateCashflows(list));
+  }
+  return fyPerformanceVehicleShapeFromCashflowGroups(fy, fyStart, fyEnd, cashflowsByKey);
+}
+
+/**
+ * FY Performance by sector. Uses `sectorSplit` weights when present (same convention as exposure),
+ * else full holding weight to `sector`.
+ */
+export function getFYPerformanceBySector(input: PerformanceEngineInput): FYPerformanceByVehicle {
+  const { holdings, fy } = input;
+  const { start: fyStart, end: fyEnd } = parseFY(fy);
+
+  const bySector = new Map<string, { transactions: Transaction[] }[]>();
+  for (const h of holdings) {
+    const slices =
+      h.sectorSplit && Object.keys(h.sectorSplit).length > 0
+        ? Object.entries(h.sectorSplit).map(([sector, pct]) => ({
+            sector,
+            w: pct / 100,
+          }))
+        : [{ sector: String(h.sector ?? "Unknown"), w: 1 }];
+
+    for (const { sector, w } of slices) {
+      if (!bySector.has(sector)) bySector.set(sector, []);
+      bySector.get(sector)!.push({
+        transactions: h.transactions.map((t) => ({ ...t, amount: t.amount * w })),
+      });
+    }
+  }
+
+  const cashflowsByKey = new Map<string, { date: string; amount: number }[]>();
+  for (const [sector, holders] of bySector) {
+    cashflowsByKey.set(sector, aggregateCashflows(holders));
+  }
+  return fyPerformanceVehicleShapeFromCashflowGroups(fy, fyStart, fyEnd, cashflowsByKey);
+}
+
+/** FY Performance by market cap bucket (Large / Mid / Small). */
+export function getFYPerformanceByMarketCap(input: PerformanceEngineInput): FYPerformanceByVehicle {
+  const { holdings, fy } = input;
+  const { start: fyStart, end: fyEnd } = parseFY(fy);
+  const byKey = new Map<string, Holding[]>();
+  for (const h of holdings) {
+    const key = h.marketCap;
+    if (!byKey.has(key)) byKey.set(key, []);
+    byKey.get(key)!.push(h);
+  }
+  const cashflowsByKey = new Map<string, { date: string; amount: number }[]>();
+  for (const [k, list] of byKey) {
+    cashflowsByKey.set(k, aggregateCashflows(list));
+  }
+  return fyPerformanceVehicleShapeFromCashflowGroups(fy, fyStart, fyEnd, cashflowsByKey);
+}
+
 /** FY Performance by vehicle (asset type): MoM return % per Equity, MutualFund, PMS, etc. */
 export function getFYPerformanceByVehicle(input: PerformanceEngineInput): FYPerformanceByVehicle {
   const { holdings, fy } = input;
@@ -207,32 +327,12 @@ export function getFYPerformanceByVehicle(input: PerformanceEngineInput): FYPerf
     byVehicle.get(v)!.push(h);
   }
 
-  const cashflowsByVehicle = new Map<AssetType, { date: string; amount: number }[]>();
+  const cashflowsByVehicle = new Map<string, { date: string; amount: number }[]>();
   for (const [vehicle, list] of byVehicle) {
     cashflowsByVehicle.set(vehicle, aggregateCashflows(list));
   }
 
-  const monthOnMonth: VehicleMonthReturn[] = [];
-  const cursor = new Date(fyStart);
-  while (cursor <= fyEnd) {
-    const monthStart = startOfMonth(cursor);
-    const monthEnd = endOfMonth(cursor);
-    const range: [Date, Date] = [monthStart, monthEnd];
-
-    const returns: Record<string, number | null> = {};
-    for (const [vehicle, cf] of cashflowsByVehicle) {
-      const irr = computeXIRR(cf.map((c) => ({ ...c, type: "nav" as const })), range);
-      returns[vehicle] = irr != null ? periodReturnPctFromXIRR(irr, range) : null;
-    }
-
-    monthOnMonth.push({
-      month: format(monthStart, "MMM yyyy"),
-      returns,
-    });
-    cursor.setMonth(cursor.getMonth() + 1);
-  }
-
-  return { fy, monthOnMonth };
+  return fyPerformanceVehicleShapeFromCashflowGroups(fy, fyStart, fyEnd, cashflowsByVehicle);
 }
 
 export function getRollingPerformance(

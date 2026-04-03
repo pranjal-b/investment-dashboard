@@ -3,34 +3,16 @@
  * Realized vs unrealized gain. Uses shared xirr utility.
  */
 
-import type { Holding, AllocationBucketId } from "@/lib/types";
-import type { ReturnMetrics, PeriodReturn, BucketPeriodReturn } from "./types";
+import type { Holding } from "@/lib/types";
+import {
+  getInvestmentPolicyPath,
+  labelForPolicySegment,
+  policyPathKey,
+} from "@/lib/classification/investmentPolicyCategory";
+import type { ReturnMetrics, PeriodReturn, PerformanceMatrixTreeNode } from "./types";
+import { holdingsUnderPrefix, sortChildIds } from "./policyAllocationTree";
 import { computeXIRR, aggregateCashflows } from "@/lib/calculations/xirr";
 import { subMonths } from "date-fns";
-
-const BUCKET_LABELS: Record<AllocationBucketId, string> = {
-  DirectEquity: "Direct Equity",
-  EquityMF: "Equity MF",
-  DebtMF: "Debt MF",
-  AlternativeFOF: "Alternative FOF",
-  PMS: "PMS",
-  AIF: "AIF",
-  ETF: "ETF",
-  IndexFund: "Index Fund",
-};
-
-function assetTypeToBucket(assetType: Holding["assetType"]): AllocationBucketId {
-  const map: Record<string, AllocationBucketId> = {
-    Equity: "DirectEquity",
-    MutualFund: "EquityMF",
-    DebtMF: "DebtMF",
-    AIF: "AIF",
-    PMS: "PMS",
-    ETF: "ETF",
-    IndexFund: "IndexFund",
-  };
-  return map[assetType] ?? "EquityMF";
-}
 
 export interface ReturnEngineInput {
   holdings: Holding[];
@@ -162,45 +144,84 @@ export function getPeriodReturns(input: ReturnEngineInput): PeriodReturn[] {
 /** Period column order for Performance Matrix (horizontal headers) */
 export const PERFORMANCE_MATRIX_PERIODS = ["3M", "6M", "1Y", "3Y", "SI"] as const;
 
-export function getBucketPeriodReturns(input: ReturnEngineInput): BucketPeriodReturn[] {
+function computePeriodReturnsForHoldings(
+  bucketHoldings: Holding[],
+  asOf: Date,
+  asOfStr: string,
+  dateRange: [Date, Date] | null
+): { periodReturns: Record<string, number | null>; xirrPct: number | null } {
+  const rawCashflows = aggregateCashflows(bucketHoldings);
+  const bucketMarketValue = bucketHoldings.reduce((s, h) => s + h.currentValue, 0);
+  const cashflowsWithTerminal = [
+    ...rawCashflows.map((c) => ({ date: c.date, amount: c.amount, type: "nav" as const })),
+    { date: asOfStr, amount: bucketMarketValue, type: "nav" as const },
+  ];
+  const periodReturns: Record<string, number | null> = {};
+  for (const { period, months } of PERIOD_MONTHS) {
+    const start = subMonths(asOf, months);
+    const range: [Date, Date] = [start, asOf];
+    const r = computeXIRR(cashflowsWithTerminal, range);
+    periodReturns[period] = r != null ? r * 100 : null;
+  }
+  const xirr = computeXIRR(cashflowsWithTerminal, dateRange);
+  return { periodReturns, xirrPct: xirr != null ? xirr * 100 : null };
+}
+
+/** Same policy path hierarchy as Allocation Overview, with period returns at each node. */
+export function getPerformanceMatrixTree(input: ReturnEngineInput): PerformanceMatrixTreeNode[] {
   const { holdings, dateRange } = input;
   const asOf = dateRange?.[1] ?? new Date();
-
-  const byBucket = new Map<AllocationBucketId, Holding[]>();
-  for (const h of holdings) {
-    const bucketId = assetTypeToBucket(h.assetType);
-    if (!byBucket.has(bucketId)) byBucket.set(bucketId, []);
-    byBucket.get(bucketId)!.push(h);
-  }
-
   const asOfStr = toDateStr(asOf);
-  const result: BucketPeriodReturn[] = [];
-  for (const [bucketId, bucketHoldings] of byBucket) {
-    if (bucketHoldings.length === 0) continue;
-    const rawCashflows = aggregateCashflows(bucketHoldings);
-    const bucketMarketValue = bucketHoldings.reduce((s, h) => s + h.currentValue, 0);
-    const cashflowsWithTerminal = [
-      ...rawCashflows.map((c) => ({ date: c.date, amount: c.amount, type: "nav" as const })),
-      { date: asOfStr, amount: bucketMarketValue, type: "nav" as const },
-    ];
-    const periodReturns: Record<string, number | null> = {};
-    for (const { period, months } of PERIOD_MONTHS) {
-      const start = subMonths(asOf, months);
-      const range: [Date, Date] = [start, asOf];
-      const r = computeXIRR(cashflowsWithTerminal, range);
-      periodReturns[period] = r != null ? r * 100 : null;
-    }
-    const xirr = computeXIRR(cashflowsWithTerminal, dateRange);
-    result.push({
-      bucketId,
-      label: BUCKET_LABELS[bucketId],
-      periodReturns,
-      xirrPct: xirr != null ? xirr * 100 : null,
-    });
+
+  const byLeaf = new Map<string, Holding[]>();
+  for (const h of holdings) {
+    const path = getInvestmentPolicyPath(h);
+    const key = policyPathKey(path);
+    if (!byLeaf.has(key)) byLeaf.set(key, []);
+    byLeaf.get(key)!.push(h);
   }
 
-  const order = (["DirectEquity", "EquityMF", "DebtMF", "AlternativeFOF", "PMS", "AIF", "ETF", "IndexFund"] as AllocationBucketId[]);
-  return result.sort((a, b) => order.indexOf(a.bucketId) - order.indexOf(b.bucketId));
+  function buildNode(pathKey: string): PerformanceMatrixTreeNode | null {
+    const hh = holdingsUnderPrefix(pathKey, byLeaf);
+    const mv = hh.reduce((s, h) => s + h.currentValue, 0);
+    if (mv <= 0) return null;
+
+    const { periodReturns, xirrPct } = computePeriodReturnsForHoldings(hh, asOf, asOfStr, dateRange);
+    const parts = pathKey.split("|");
+    const segmentId = parts[parts.length - 1]!;
+    const depth = parts.length - 1;
+
+    const childIds = new Set<string>();
+    const prefixWithPipe = `${pathKey}|`;
+    for (const k of byLeaf.keys()) {
+      if (!k.startsWith(prefixWithPipe)) continue;
+      const rest = k.slice(prefixWithPipe.length);
+      const nextSeg = rest.split("|")[0];
+      if (nextSeg) childIds.add(nextSeg);
+    }
+    const sortedChildSegments = sortChildIds(pathKey, Array.from(childIds));
+    const children = sortedChildSegments
+      .map((seg) => buildNode(`${pathKey}|${seg}`))
+      .filter((n): n is PerformanceMatrixTreeNode => n != null);
+
+    return {
+      pathKey,
+      depth,
+      label: labelForPolicySegment(segmentId),
+      periodReturns,
+      xirrPct,
+      children,
+    };
+  }
+
+  const rootSegments = sortChildIds(
+    "",
+    Array.from(new Set([...byLeaf.keys()].map((k) => k.split("|")[0]!).filter(Boolean)))
+  );
+
+  return rootSegments
+    .map((seg) => buildNode(seg))
+    .filter((n): n is PerformanceMatrixTreeNode => n != null);
 }
 
 export interface HoldingPeriodReturn {

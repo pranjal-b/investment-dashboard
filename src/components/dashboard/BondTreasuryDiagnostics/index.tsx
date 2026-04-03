@@ -3,8 +3,44 @@
 import { useMemo } from "react";
 import ReactECharts from "echarts-for-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { BondSplitSlice } from "@/lib/analytics/types";
 import { useBondTreasuryDiagnostics, useFormatINR } from "@/lib/store/dashboardStore";
 import { createModernTheme, CHART_CONTAINER_CLASS } from "@/lib/charts/chartTheme";
+
+function ratingDistributionBarOption(rows: BondSplitSlice[], pctContext: string) {
+  const theme = createModernTheme() as Record<string, unknown>;
+  return {
+    ...theme,
+    grid: { left: 100, right: 24, top: 8, bottom: 24 },
+    tooltip: {
+      trigger: "axis",
+      axisPointer: { type: "shadow" },
+      formatter: (params: unknown) => {
+        const ps = params as { name?: string; axisValue?: string; value?: number; data?: number }[];
+        const p = ps[0];
+        if (!p) return "";
+        const name = String(p.name ?? p.axisValue ?? "");
+        const raw = p.value ?? p.data ?? 0;
+        const v = typeof raw === "number" ? raw : Number(raw);
+        return `${name}<br/>${Number.isFinite(v) ? v.toFixed(1) : raw}% ${pctContext}`;
+      },
+    },
+    xAxis: { type: "value", axisLabel: { formatter: (v: number) => `${v.toFixed(0)}%` } },
+    yAxis: {
+      type: "category",
+      data: rows.map((r) => r.label),
+      axisLabel: { fontSize: 11 },
+    },
+    series: [
+      {
+        type: "bar",
+        data: rows.map((r) => r.pct),
+        itemStyle: { color: "#334155", borderRadius: [0, 4, 4, 0] },
+      },
+    ],
+  };
+}
 
 const COL_SECURED = "#059669";
 const COL_UNSECURED = "#d97706";
@@ -68,34 +104,25 @@ export function BondTreasuryDiagnostics() {
     };
   }, [d.seniorityBreakdown]);
 
-  const ratingBarOption = useMemo(() => {
-    const theme = createModernTheme() as Record<string, unknown>;
-    const rows = d.ratingDistribution;
-    return {
-      ...theme,
-      grid: { left: 100, right: 24, top: 8, bottom: 24 },
-      tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
-      xAxis: { type: "value", axisLabel: { formatter: (v: number) => `${v.toFixed(0)}%` } },
-      yAxis: {
-        type: "category",
-        data: rows.map((r) => r.label),
-        axisLabel: { fontSize: 11 },
-      },
-      series: [
-        {
-          type: "bar",
-          data: rows.map((r) => r.pct),
-          itemStyle: { color: "#334155", borderRadius: [0, 4, 4, 0] },
-        },
-      ],
-    };
-  }, [d.ratingDistribution]);
+  const fullRatingBarOption = useMemo(
+    () => ratingDistributionBarOption(d.ratingDistribution, "of total debt MV"),
+    [d.ratingDistribution]
+  );
+
+  const unsecuredRatingBarOption = useMemo(
+    () => ratingDistributionBarOption(d.unsecuredRatingDistribution, "of unsecured MV"),
+    [d.unsecuredRatingDistribution]
+  );
+
+  const hasFullRatings = d.ratingDistribution.length > 0;
+  const hasUnsecuredRatings = d.unsecuredRatingDistribution.length > 0;
+  const showRatingTabs = hasFullRatings && hasUnsecuredRatings;
 
   if (d.totalDebtValue <= 0) {
     return (
       <Card className="border border-border/60 rounded-xl shadow-none">
         <CardContent className="pt-6 pb-4">
-          <h2 className="text-lg font-semibold text-foreground mb-1">Bond treasury diagnostics</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-1">Debt investment diagnostics</h2>
           <p className="text-sm text-muted-foreground">{d.overallAssessment}</p>
         </CardContent>
       </Card>
@@ -104,7 +131,7 @@ export function BondTreasuryDiagnostics() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold text-foreground">Bond treasury diagnostics</h2>
+      <h2 className="text-lg font-semibold text-foreground">Debt investment diagnostics</h2>
       <p className="text-sm text-muted-foreground">
         Debt sleeve MV <span className="font-medium text-foreground">{formatINR(d.totalDebtValue)}</span>
         {" · "}
@@ -162,45 +189,69 @@ export function BondTreasuryDiagnostics() {
         </Card>
       </div>
 
-      {d.unsecuredByRating.length > 0 && (
-        <Card className="border border-border/60 rounded-xl shadow-none">
-          <CardContent className="pt-4 pb-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
-              Unsecured book — rating mix
-            </h3>
-            <div className="flex flex-wrap gap-3 text-sm">
-              {d.unsecuredByRating.map((r) => (
-                <div
-                  key={r.bucket}
-                  className="rounded-lg border border-border/60 px-3 py-2 bg-muted/20"
-                >
-                  <span className="font-medium">{r.bucket}</span>
-                  <span className="text-muted-foreground mx-1">·</span>
-                  <span className="tabular-nums">{r.pctOfUnsecured.toFixed(1)}% of unsecured</span>
-                  <span className="text-muted-foreground mx-1">·</span>
-                  <span className="tabular-nums">{formatINR(r.value)}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       <Card className="border border-border/60 rounded-xl shadow-none">
         <CardContent className="pt-4 pb-2">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-            Full debt book — rating distribution (% of MV)
+            Rating distribution
           </h3>
-          {d.ratingDistribution.length > 0 ? (
-            <div className={`w-full min-h-[200px] ${CHART_CONTAINER_CLASS}`}>
-              <ReactECharts
-                option={ratingBarOption}
-                style={{ height: Math.max(200, d.ratingDistribution.length * 28) }}
-                opts={{ renderer: "canvas" }}
-              />
-            </div>
-          ) : (
+          {!hasFullRatings && !hasUnsecuredRatings ? (
             <p className="text-sm text-muted-foreground py-6">No rating fields on debt positions.</p>
+          ) : showRatingTabs ? (
+            <Tabs defaultValue="full" className="w-full">
+              <TabsList className="mb-2 h-auto flex-wrap justify-start gap-1 bg-muted/80 p-1">
+                <TabsTrigger value="full" className="text-xs sm:text-sm">
+                  Full book (% of MV)
+                </TabsTrigger>
+                <TabsTrigger value="unsecured" className="text-xs sm:text-sm">
+                  Unsecured (% of unsecured)
+                </TabsTrigger>
+              </TabsList>
+              <p className="text-xs text-muted-foreground mb-2">
+                Same rating buckets; full book uses total debt MV, unsecured tab uses unsecured MV only.
+              </p>
+              <TabsContent value="full" className="mt-0">
+                <div className={`w-full min-h-[200px] ${CHART_CONTAINER_CLASS}`}>
+                  <ReactECharts
+                    option={fullRatingBarOption}
+                    style={{ height: Math.max(200, d.ratingDistribution.length * 28) }}
+                    opts={{ renderer: "canvas" }}
+                  />
+                </div>
+              </TabsContent>
+              <TabsContent value="unsecured" className="mt-0">
+                <div className={`w-full min-h-[200px] ${CHART_CONTAINER_CLASS}`}>
+                  <ReactECharts
+                    option={unsecuredRatingBarOption}
+                    style={{ height: Math.max(200, d.unsecuredRatingDistribution.length * 28) }}
+                    opts={{ renderer: "canvas" }}
+                  />
+                </div>
+              </TabsContent>
+            </Tabs>
+          ) : hasFullRatings ? (
+            <>
+              <p className="text-xs text-muted-foreground mb-2">% of total debt sleeve MV.</p>
+              <div className={`w-full min-h-[200px] ${CHART_CONTAINER_CLASS}`}>
+                <ReactECharts
+                  option={fullRatingBarOption}
+                  style={{ height: Math.max(200, d.ratingDistribution.length * 28) }}
+                  opts={{ renderer: "canvas" }}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground mb-2">
+                Unsecured sleeve — each bar is % of unsecured MV (bars sum to ~100%).
+              </p>
+              <div className={`w-full min-h-[200px] ${CHART_CONTAINER_CLASS}`}>
+                <ReactECharts
+                  option={unsecuredRatingBarOption}
+                  style={{ height: Math.max(200, d.unsecuredRatingDistribution.length * 28) }}
+                  opts={{ renderer: "canvas" }}
+                />
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

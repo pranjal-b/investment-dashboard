@@ -1,11 +1,20 @@
 "use client";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { usePortfolioSnapshot, usePolicyChecks } from "@/lib/store/dashboardStore";
+import { BENCHMARK_LABELS } from "@/lib/performance/benchmarkEngine";
+import {
+  useDashboardStore,
+  usePortfolioSnapshot,
+  usePolicyChecks,
+} from "@/lib/store/dashboardStore";
 
 export function PortfolioHighlights() {
   const snapshot = usePortfolioSnapshot();
   const checks = usePolicyChecks();
+  const primaryBenchmarkKey = useDashboardStore(
+    (s) => s.filters.performanceBenchmarks?.[0] ?? "nifty50"
+  );
+  const benchmarkName = BENCHMARK_LABELS[primaryBenchmarkKey] ?? primaryBenchmarkKey;
   const highlights: string[] = [];
 
   if (snapshot.portfolioMarketValue > 0) {
@@ -14,7 +23,11 @@ export function PortfolioHighlights() {
   if (snapshot.portfolioXIRR != null && snapshot.benchmarkXIRR != null) {
     const excess = snapshot.portfolioXIRR - snapshot.benchmarkXIRR;
     if (Math.abs(excess) > 0.1) {
-      highlights.push(excess >= 0 ? `Outperformed benchmark by ${excess.toFixed(1)}% XIRR.` : `Underperformed benchmark by ${Math.abs(excess).toFixed(1)}% XIRR.`);
+      highlights.push(
+        excess >= 0
+          ? `Outperformed ${benchmarkName} (equity index) by ${excess.toFixed(1)}% portfolio XIRR — not a fair yardstick for cash, FD, or bank balances.`
+          : `Underperformed ${benchmarkName} (equity index) by ${Math.abs(excess).toFixed(1)}% portfolio XIRR — not a fair yardstick for cash, FD, or bank balances.`
+      );
     }
   }
   const altCheck = checks.find((c) => c.policy.toLowerCase().includes("alternative"));

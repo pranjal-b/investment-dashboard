@@ -1,5 +1,7 @@
 "use client";
 
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
@@ -10,12 +12,13 @@ import {
 } from "@/components/ui/select";
 import { usePerformanceMatrixData, useDashboardStore } from "@/lib/store/dashboardStore";
 import { PERFORMANCE_MATRIX_PERIODS } from "@/lib/analytics/returnEngine";
-import { BENCHMARK_LABELS } from "@/lib/performance/benchmarkEngine";
 import {
   getPerformanceMatrixSample,
+  getPerformanceMatrixSampleTree,
   PERFORMANCE_MATRIX_SCENARIOS,
   type PerformanceMatrixScenario,
 } from "@/data/performance-matrix-sample";
+import type { PerformanceMatrixTreeNode } from "@/lib/analytics/types";
 
 const SAMPLE_PERIOD_KEYS = ["3M", "6M", "1Y", "3Y", "Since Inception"] as const;
 
@@ -35,16 +38,119 @@ const PERIOD_HEADERS: Record<string, string> = {
   SI: "Since Inception",
 };
 
+function MatrixRows({
+  nodes,
+  expanded,
+  toggle,
+  periods,
+}: {
+  nodes: PerformanceMatrixTreeNode[];
+  expanded: Set<string>;
+  toggle: (pathKey: string) => void;
+  periods: readonly string[];
+}) {
+  return (
+    <>
+      {nodes.map((node) => {
+        const hasChildren = node.children.length > 0;
+        const isOpen = expanded.has(node.pathKey);
+        const padLeft = 12 + node.depth * 20;
+
+        return (
+          <Fragment key={node.pathKey}>
+            <tr className="border-b border-border/50 hover:bg-muted/30">
+              <td className="py-2 px-3 min-w-[220px]" style={{ paddingLeft: padLeft }}>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  {hasChildren ? (
+                    <button
+                      type="button"
+                      onClick={() => toggle(node.pathKey)}
+                      className="shrink-0 inline-flex rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      aria-expanded={isOpen}
+                      aria-label={isOpen ? "Collapse" : "Expand"}
+                    >
+                      {isOpen ? (
+                        <ChevronDown className="size-4" aria-hidden />
+                      ) : (
+                        <ChevronRight className="size-4" aria-hidden />
+                      )}
+                    </button>
+                  ) : (
+                    <span className="inline-block w-6 shrink-0" aria-hidden />
+                  )}
+                  <span
+                    className={
+                      node.depth === 0
+                        ? "font-semibold text-foreground truncate"
+                        : node.depth === 1
+                          ? "font-medium text-foreground truncate"
+                          : "text-muted-foreground truncate"
+                    }
+                  >
+                    {node.label}
+                  </span>
+                </div>
+              </td>
+              {periods.map((p) => (
+                <td key={p} className="text-right py-2 px-3 tabular-nums">
+                  {formatPercent(node.periodReturns[p] ?? null)}
+                </td>
+              ))}
+            </tr>
+            {hasChildren && isOpen ? (
+              <MatrixRows
+                nodes={node.children}
+                expanded={expanded}
+                toggle={toggle}
+                periods={periods}
+              />
+            ) : null}
+          </Fragment>
+        );
+      })}
+    </>
+  );
+}
+
 export function PerformanceMatrix() {
   const scenario = useDashboardStore(
     (s) => (s.filters.performanceMatrixScenario ?? "moderate") as "live" | PerformanceMatrixScenario
   );
   const setFilters = useDashboardStore((s) => s.setFilters);
-  const { bucketRows, benchmarkByPeriod, portfolioByPeriod, portfolioXIRR, benchmarkXIRR } =
-    usePerformanceMatrixData();
+  const { matrixTree, benchmarkByPeriod, portfolioByPeriod } = usePerformanceMatrixData();
   const periods = [...PERFORMANCE_MATRIX_PERIODS];
   const useSample = scenario !== "live";
-  const sampleRows = useSample ? getPerformanceMatrixSample(scenario as PerformanceMatrixScenario) : null;
+
+  const flatSample = useMemo(
+    () => (useSample ? getPerformanceMatrixSample(scenario as PerformanceMatrixScenario) : null),
+    [useSample, scenario]
+  );
+  const sampleTree = useMemo(
+    () => (useSample ? getPerformanceMatrixSampleTree(scenario as PerformanceMatrixScenario) : null),
+    [useSample, scenario]
+  );
+
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => new Set());
+  const togglePath = useCallback((pathKey: string) => {
+    setExpandedPaths((prev) => {
+      const next = new Set(prev);
+      if (next.has(pathKey)) next.delete(pathKey);
+      else next.add(pathKey);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (useSample && sampleTree) {
+      const next = new Set<string>();
+      for (const n of sampleTree) {
+        if (n.children.length > 0) next.add(n.pathKey);
+      }
+      setExpandedPaths(next);
+    } else if (!useSample) {
+      setExpandedPaths(new Set());
+    }
+  }, [useSample, scenario, sampleTree]);
 
   return (
     <div className="space-y-6">
@@ -87,7 +193,7 @@ export function PerformanceMatrix() {
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left py-2 px-3 font-medium text-muted-foreground">
-                  Bucket / Metric
+                  Category
                 </th>
                 {useSample
                   ? SAMPLE_PERIOD_KEYS.map((p) => (
@@ -109,45 +215,67 @@ export function PerformanceMatrix() {
               </tr>
             </thead>
             <tbody>
-              {useSample && sampleRows ? (
-                sampleRows.map((row) => (
-                  <tr
-                    key={row.bucket}
-                    className={
-                      row.bucket === "Portfolio XIRR"
-                        ? "bg-muted/30"
-                        : "border-b border-border/50 hover:bg-muted/30"
-                    }
-                  >
-                    <td
-                      className={`py-2 px-3 font-medium ${
-                        row.bucket === "Benchmark (Nifty 50)" ? "text-muted-foreground" : ""
-                      }`}
-                    >
-                      {row.bucket}
-                    </td>
-                    {SAMPLE_PERIOD_KEYS.map((p) => (
-                      <td key={p} className="text-right py-2 px-3 tabular-nums">
-                        {formatPercent(row[p], row[p] === null)}
+              {useSample && flatSample && sampleTree ? (
+                <>
+                  {sampleTree.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={SAMPLE_PERIOD_KEYS.length + 1}
+                        className="py-8 px-3 text-sm text-muted-foreground text-center"
+                      >
+                        No sample categories.
                       </td>
+                    </tr>
+                  ) : (
+                    <MatrixRows
+                      nodes={sampleTree}
+                      expanded={expandedPaths}
+                      toggle={togglePath}
+                      periods={periods}
+                    />
+                  )}
+                  {flatSample
+                    .filter((row) => row.bucket === "Benchmark (Nifty 50)" || row.bucket === "Portfolio XIRR")
+                    .map((row) => (
+                      <tr
+                        key={row.bucket}
+                        className={
+                          row.bucket === "Portfolio XIRR"
+                            ? "bg-muted/30"
+                            : "border-b border-border/50 hover:bg-muted/30"
+                        }
+                      >
+                        <td
+                          className={`py-2 px-3 font-medium ${
+                            row.bucket === "Benchmark (Nifty 50)" ? "text-muted-foreground" : ""
+                          }`}
+                        >
+                          {row.bucket}
+                        </td>
+                        {SAMPLE_PERIOD_KEYS.map((p) => (
+                          <td key={p} className="text-right py-2 px-3 tabular-nums">
+                            {formatPercent(row[p], row[p] === null)}
+                          </td>
+                        ))}
+                      </tr>
                     ))}
-                  </tr>
-                ))
+                </>
               ) : (
                 <>
-                  {bucketRows.map((row) => (
-                    <tr
-                      key={row.bucketId}
-                      className="border-b border-border/50 hover:bg-muted/30"
-                    >
-                      <td className="py-2 px-3 font-medium">{row.label}</td>
-                      {periods.map((p) => (
-                        <td key={p} className="text-right py-2 px-3 tabular-nums">
-                          {formatPercent(row.periodReturns[p] ?? null)}
-                        </td>
-                      ))}
+                  {matrixTree.length === 0 ? (
+                    <tr>
+                      <td colSpan={periods.length + 1} className="py-8 px-3 text-sm text-muted-foreground text-center">
+                        No holdings in view.
+                      </td>
                     </tr>
-                  ))}
+                  ) : (
+                    <MatrixRows
+                      nodes={matrixTree}
+                      expanded={expandedPaths}
+                      toggle={togglePath}
+                      periods={periods}
+                    />
+                  )}
                   <tr className="border-b border-border/50 hover:bg-muted/30">
                     <td className="py-2 px-3 font-medium text-muted-foreground">
                       Benchmark (XIRR)
@@ -180,8 +308,8 @@ export function PerformanceMatrix() {
       </Card>
       <p className="text-xs text-muted-foreground">
         {useSample
-          ? "Sample data (Indian market context). Switch to Live for holdings-based returns."
-          : "Bucket-wise period returns (Portfolio) • Benchmark • XIRR in Since Inception"}
+          ? "Sample data: expand Equity investment or Liquid & equivalents to see sub-rows (same control pattern as Live). Switch to Live for your holdings tree."
+          : "Same investment policy tree as Allocation Overview: expand any category to drill into sub-categories. Benchmark row uses global performance controls; Since Inception aligns with portfolio/benchmark XIRR."}
       </p>
     </div>
   );

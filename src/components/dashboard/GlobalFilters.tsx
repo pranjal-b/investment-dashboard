@@ -21,51 +21,44 @@ import { useDashboardStore } from "@/lib/store/dashboardStore";
 import {
   MARKET_CAPS,
   SECTORS,
-  type PortfolioFilter,
-  type ScopeAssetClass,
-  type VehicleFilter,
   type ReportingCurrency,
   type ReportingUnits,
+  type ScopeAssetClass,
+  type VehicleFilter,
 } from "@/lib/types";
+import {
+  POLICY_CATEGORY_1_OPTIONS,
+  getPolicyCategory2Options,
+} from "@/lib/classification/investmentPolicyCategory";
 import { ChevronDown } from "lucide-react";
 
 function toDateString(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
-const inputBase =
-  "h-9 rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-200 min-w-0";
-
 const dateInputClass =
   "h-9 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-200 focus:border-slate-300 w-full min-w-[7rem]";
 
 // Options for dropdowns
-const PORTFOLIO_OPTIONS: { value: PortfolioFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "Core", label: "Core" },
-  { value: "New", label: "Satellite" },
-  { value: "Old", label: "Legacy" },
-];
-
 const SCOPE_ASSET_CLASS_OPTIONS: { value: ScopeAssetClass; label: string }[] = [
   { value: "all", label: "All" },
+  { value: "equity", label: "Equity" },
+  { value: "debt", label: "Debt" },
+  { value: "alternatives", label: "Alternatives" },
   { value: "liquid", label: "Liquid & equivalents" },
   { value: "cash", label: "Cash (legacy → liquid)" },
-  { value: "debt", label: "Debt" },
-  { value: "equity", label: "Equity" },
-  { value: "alternatives", label: "Alternatives" },
   { value: "unlisted", label: "Unlisted" },
 ];
 
 const VEHICLE_OPTIONS: { value: VehicleFilter; label: string }[] = [
   { value: "all", label: "All" },
-  { value: "direct", label: "Direct" },
-  { value: "mf", label: "MF" },
+  { value: "direct", label: "Direct equity" },
+  { value: "mf", label: "Mutual fund" },
   { value: "pms", label: "PMS" },
   { value: "aif", label: "AIF" },
   { value: "etf", label: "ETF" },
-  { value: "index", label: "Index" },
-  { value: "fof", label: "FOF" },
+  { value: "index", label: "Index fund" },
+  { value: "fof", label: "Fund of funds" },
 ];
 
 const REPORTING_CURRENCY_OPTIONS: { value: ReportingCurrency; label: string }[] = [
@@ -89,18 +82,22 @@ export function GlobalFilters() {
   const fromStr = dateRange ? toDateString(dateRange[0]) : "";
   const toStr = dateRange ? toDateString(dateRange[1]) : "";
 
-  const portfolioFilter = filters.portfolioFilter ?? "all";
-  const scopeAssetClass = (filters.scopeAssetClass ?? "all") as ScopeAssetClass;
-  const vehicleFilter = (filters.vehicleFilter ?? "all") as VehicleFilter;
+  const policyCategory1 = filters.policyCategory1 ?? "all";
+  const policyCategory2 = filters.policyCategory2 ?? "all";
+  const category2Options = useMemo(
+    () => getPolicyCategory2Options(policyCategory1),
+    [policyCategory1]
+  );
   const marketCapValue =
     filters.marketCaps.length === 0 ? "all" : (filters.marketCaps[0] as "all" | "Large" | "Mid" | "Small");
   const reportingCurrency = (filters.reportingCurrency ?? "INR") as ReportingCurrency;
   const reportingUnits = (filters.reportingUnits ?? filters.inrScale ?? "cr") as ReportingUnits;
+  const scopeAssetClass = filters.scopeAssetClass ?? "all";
+  const vehicleFilter = filters.vehicleFilter ?? "all";
 
   const hasActiveFilters =
-    scopeAssetClass !== "all" ||
-    vehicleFilter !== "all" ||
-    (portfolioFilter && portfolioFilter !== "all") ||
+    policyCategory1 !== "all" ||
+    policyCategory2 !== "all" ||
     filters.sectors.length > 0 ||
     filters.marketCaps.length > 0 ||
     (filters.reportingCurrency && filters.reportingCurrency !== "INR") ||
@@ -108,13 +105,17 @@ export function GlobalFilters() {
 
   const filterSummaryParts = useMemo(() => {
     const parts: string[] = [];
-    if (portfolioFilter !== "all") parts.push(PORTFOLIO_OPTIONS.find((o) => o.value === portfolioFilter)?.label ?? portfolioFilter);
-    if (scopeAssetClass !== "all") parts.push(SCOPE_ASSET_CLASS_OPTIONS.find((o) => o.value === scopeAssetClass)?.label ?? scopeAssetClass);
-    if (vehicleFilter !== "all") parts.push(VEHICLE_OPTIONS.find((o) => o.value === vehicleFilter)?.label ?? vehicleFilter);
+    if (policyCategory1 !== "all") {
+      parts.push(POLICY_CATEGORY_1_OPTIONS.find((o) => o.id === policyCategory1)?.label ?? policyCategory1);
+      if (policyCategory2 !== "all") {
+        const sub = category2Options.find((o) => o.id === policyCategory2);
+        if (sub) parts.push(sub.label);
+      }
+    }
     if (filters.marketCaps.length > 0) parts.push(`${filters.marketCaps[0]} Cap`);
     if (filters.sectors.length > 0) parts.push(filters.sectors.join(", "));
     return parts;
-  }, [portfolioFilter, scopeAssetClass, vehicleFilter, filters.marketCaps, filters.sectors]);
+  }, [policyCategory1, policyCategory2, category2Options, filters.marketCaps, filters.sectors]);
 
   const setDateFrom = (value: string) => {
     const from = value ? new Date(value + "T00:00:00") : (dateRange?.[0] ?? new Date());
@@ -132,7 +133,7 @@ export function GlobalFilters() {
 
   return (
     <section className="bg-white rounded-2xl shadow-sm p-4 overflow-x-auto">
-      <div className="grid grid-cols-10 gap-3 items-end min-w-[800px]">
+      <div className="grid grid-cols-9 gap-3 items-end min-w-[720px]">
         {/* Column 1: Date Range (From / To) - extra width for two inputs */}
         <div className="flex flex-col gap-1.5 min-w-0 col-span-2">
           <span className={labelClass}>Date Range</span>
@@ -157,52 +158,52 @@ export function GlobalFilters() {
           </div>
         </div>
 
-        {/* Column 2: Portfolio */}
+        {/* Column 2: Category L1 */}
         <div className="flex flex-col gap-1.5 min-w-0">
-          <span className={labelClass}>Portfolio</span>
-          <Select value={portfolioFilter} onValueChange={(v) => setFilters({ portfolioFilter: v as PortfolioFilter })}>
+          <span className={labelClass}>Category</span>
+          <Select
+            value={policyCategory1}
+            onValueChange={(v) => setFilters({ policyCategory1: v, policyCategory2: "all" })}
+          >
             <SelectTrigger className={selectTriggerClass}>
               <SelectValue placeholder="All" />
             </SelectTrigger>
             <SelectContent>
-              {PORTFOLIO_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+              <SelectItem value="all">All</SelectItem>
+              {POLICY_CATEGORY_1_OPTIONS.map((o) => (
+                <SelectItem key={o.id} value={o.id}>
+                  {o.label}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
-        {/* Column 3: Asset Class */}
+        {/* Column 3: Sub-category */}
         <div className="flex flex-col gap-1.5 min-w-0">
-          <span className={labelClass}>Asset Class</span>
-          <Select value={scopeAssetClass} onValueChange={(v) => setFilters({ scopeAssetClass: v as ScopeAssetClass })}>
+          <span className={labelClass}>Sub-category</span>
+          <Select
+            value={policyCategory2}
+            onValueChange={(v) => setFilters({ policyCategory2: v })}
+            disabled={policyCategory1 === "all"}
+          >
             <SelectTrigger className={selectTriggerClass}>
-              <SelectValue placeholder="All" />
+              <SelectValue
+                placeholder={policyCategory1 === "all" ? "Select category first" : "All"}
+              />
             </SelectTrigger>
             <SelectContent>
-              {SCOPE_ASSET_CLASS_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+              <SelectItem value="all">All</SelectItem>
+              {category2Options.map((o) => (
+                <SelectItem key={o.id} value={o.id}>
+                  {o.label}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
-        {/* Column 4: Instrument */}
-        <div className="flex flex-col gap-1.5 min-w-0">
-          <span className={labelClass}>Instrument</span>
-          <Select value={vehicleFilter} onValueChange={(v) => setFilters({ vehicleFilter: v as VehicleFilter })}>
-            <SelectTrigger className={selectTriggerClass}>
-              <SelectValue placeholder="All" />
-            </SelectTrigger>
-            <SelectContent>
-              {VEHICLE_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Column 5: Sector (multi-select dropdown) */}
+        {/* Column 4: Sector (multi-select dropdown) */}
         <div className="flex flex-col gap-1.5 min-w-0">
           <span className={labelClass}>Sector</span>
           <DropdownMenu>
@@ -231,7 +232,7 @@ export function GlobalFilters() {
           </DropdownMenu>
         </div>
 
-        {/* Column 6: Market Cap */}
+        {/* Column 5: Market Cap */}
         <div className="flex flex-col gap-1.5 min-w-0">
           <span className={labelClass}>Market Cap</span>
           <Select
@@ -250,7 +251,7 @@ export function GlobalFilters() {
           </Select>
         </div>
 
-        {/* Column 7: Reporting Currency */}
+        {/* Column 6: Reporting Currency */}
         <div className="flex flex-col gap-1.5 min-w-0">
           <span className={labelClass}>Currency</span>
           <Select value={reportingCurrency} onValueChange={(v) => setFilters({ reportingCurrency: v as ReportingCurrency })}>
@@ -265,7 +266,7 @@ export function GlobalFilters() {
           </Select>
         </div>
 
-        {/* Column 8: Reporting Units */}
+        {/* Column 7: Reporting Units */}
         <div className="flex flex-col gap-1.5 min-w-0">
           <span className={labelClass}>Units</span>
           <Select value={reportingUnits} onValueChange={(v) => setFilters({ reportingUnits: v as ReportingUnits })}>
@@ -280,7 +281,7 @@ export function GlobalFilters() {
           </Select>
         </div>
 
-        {/* Column 9: Reset */}
+        {/* Column 8: Reset */}
         <div className="flex flex-col gap-1.5 min-w-0">
           <span className={labelClass}>Actions</span>
           <div className="flex items-center justify-end h-9">

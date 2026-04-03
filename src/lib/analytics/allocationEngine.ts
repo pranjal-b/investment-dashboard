@@ -5,8 +5,9 @@
 
 import type { Holding, AllocationBucketId } from "@/lib/types";
 import type { AllocationBucket } from "./types";
+import { splitUnrealizedGainStLt } from "@/lib/analytics/unrealizedStLt";
 
-const BUCKET_LABELS: Record<AllocationBucketId, string> = {
+export const ALLOCATION_BUCKET_LABELS: Record<AllocationBucketId, string> = {
   DirectEquity: "Direct Equity",
   EquityMF: "Equity MF",
   DebtMF: "Debt MF",
@@ -16,6 +17,8 @@ const BUCKET_LABELS: Record<AllocationBucketId, string> = {
   ETF: "ETF",
   IndexFund: "Index Fund",
 };
+
+const BUCKET_LABELS = ALLOCATION_BUCKET_LABELS;
 
 /** Map AssetType to allocation bucket (single bucket per type for now) */
 export function assetTypeToBucket(
@@ -78,8 +81,7 @@ export function getAllocationBuckets(input: AllocationEngineInput): AllocationBu
     });
   }
 
-  const oneYearAgo = new Date();
-  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+  const asOf = new Date();
 
   for (const h of holdings) {
     const bucketId = assetTypeToBucket(h.assetType);
@@ -89,16 +91,9 @@ export function getAllocationBuckets(input: AllocationEngineInput): AllocationBu
     data.marketValue += h.currentValue;
     // Target weighted = sum of (holding's target % × holding's value) so bucket targets can sum to 100%
     data.targetWeighted += (h.targetAllocationPct / 100) * h.currentValue;
-    const gain = h.currentValue - cost;
-    // Simplified: assume ST if held < 1 year (no purchase date in base holding)
-    const isLT = true; // could use first transaction date if available
-    if (gain >= 0) {
-      if (isLT) data.unrealizedLT += gain;
-      else data.unrealizedST += gain;
-    } else {
-      if (isLT) data.unrealizedLT += gain;
-      else data.unrealizedST += gain;
-    }
+    const u = splitUnrealizedGainStLt(h, asOf);
+    data.unrealizedST += u.st;
+    data.unrealizedLT += u.lt;
     byBucket.set(bucketId, data);
   }
 

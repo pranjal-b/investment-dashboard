@@ -18,26 +18,38 @@ import type {
   ReportingUnits,
 } from "@/lib/types";
 import { getAllocationSleeve } from "@/lib/classification/sleeveClassifier";
+import { getInvestmentPolicyPath, POLICY_LABELS } from "@/lib/classification/investmentPolicyCategory";
 import { formatINRWithScale } from "@/lib/charts/chartTheme";
 import {
   getPortfolioSnapshot,
   getAllocationBuckets,
   getMacroAllocation,
+  getAllocationSleeveBreakdown,
+  getPolicyAllocationTree,
   getRebalanceInsight,
   getAllocationHealthScore,
   getTopHoldingsByDeviation,
   getReturnMetrics,
   getPeriodReturns,
-  getBucketPeriodReturns,
+  getPerformanceMatrixTree,
   getRiskMetrics,
   getDebtRisk,
   getPolicyChecks,
   getFYPerformance,
-  getFYPerformanceByCategory,
-  getFYPerformanceByVehicle,
+  getFYPerformanceByPolicyCategory,
+  getFYPerformanceByPolicySubcategory,
+  getFYPerformanceBySector,
+  getFYPerformanceByMarketCap,
   getRollingPerformance,
-  getHoldingPeriodReturns,
   getBondTreasuryDiagnostics,
+  getHoldingPeriodReturns,
+  filterLiquidEquivalentHoldings,
+  getLEReturnsSplit,
+  buildLiquidEquivalentsAnalyticsBase,
+  normalizeIdealBuckets,
+  DEFAULT_IDEAL_LIQUIDITY_BUCKETS,
+  type IdealLiquidityBucketINR,
+  type LiquidEquivalentsAnalytics,
 } from "@/lib/analytics";
 import {
   computeSectorExposure,
@@ -46,32 +58,94 @@ import {
 import { getAssetTypesForCoreOption, holdingMatchesCoreOption } from "@/lib/coreBuckets";
 import { getCurrentFY } from "@/lib/performance/fyEngine";
 import { runAggregationEngine } from "@/lib/performance/aggregationEngine";
-import { runBenchmarkEngine } from "@/lib/performance/benchmarkEngine";
+import {
+  buildIndexedFromPeriodReturns,
+  runBenchmarkEngine,
+} from "@/lib/performance/benchmarkEngine";
+import {
+  applyPitchSyntheticMomFills,
+  fillNullBenchmarkPeriodReturns,
+  shouldApplyPitchSyntheticMomFill,
+} from "@/lib/performance/pitchSampleMoM";
 import type { PerformanceChartData, PerformanceSeries } from "@/lib/performance/types";
+import { getDemoHoldings } from "@/lib/data/demoPortfolioHoldings";
+import nifty50History from "@/data/nifty50History.json";
 
-/** Clean FY 2025-26 sample data (indexed 100, realistic volatility) for demo when FY is 2025-26, MoM, portfolio view */
-const FY_2025_26_SAMPLE = {
-  xAxisPeriods: ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"],
-  portfolioIndexed: [100, 102.4, 101.2, 104.8, 107.1, 105.6, 109.4, 112.2, 114.6, 111.8, 116.3, 119.7] as (number | null)[],
-  benchmarkIndexed: [100, 101.8, 100.9, 103.6, 105.2, 104.3, 107.1, 109.8, 111.9, 110.2, 113.5, 115.4] as (number | null)[],
-  portfolioReturnPct: [0, 2.4, -1.2, 3.6, 2.2, -1.4, 3.6, 2.6, 2.1, -2.4, 4.0, 2.9] as (number | null)[],
-  benchmarkReturnPct: [0, 1.8, -0.9, 2.7, 1.5, -0.9, 2.7, 2.5, 1.9, -1.5, 3.0, 1.7] as (number | null)[],
-  initialPortfolioValue: 12000000,
-};
+const LIQUIDITY_STORAGE_KEY_V1 = "investment-dashboard-liquidity-v1";
+const LIQUIDITY_STORAGE_KEY_V2 = "investment-dashboard-liquidity-v2";
 
-/** Indian FY = Apr–Mar. Returns April 1 of the current FY (based on system date). */
-function getStartOfCurrentFY(): Date {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = d.getMonth(); // 0-indexed: Jan=0, Apr=3
-  if (month >= 3) return new Date(year, 3, 1); // Apr 1 this year
-  return new Date(year - 1, 3, 1); // Apr 1 last year
+export interface LiquiditySettingsState {
+  /** Target INR per liquidity tenor bucket (L&E dashboard). */
+  idealBucketINR: IdealLiquidityBucketINR;
+  /** Default annual % for FD premature withdrawal in the scenario calculator. */
+  defaultPrematurePenaltyAnnualPct: number;
 }
 
-const defaultDateRange: [Date, Date] = [
-  getStartOfCurrentFY(),
-  new Date(),
-];
+const defaultLiquiditySettings: LiquiditySettingsState = {
+  idealBucketINR: { ...DEFAULT_IDEAL_LIQUIDITY_BUCKETS },
+  defaultPrematurePenaltyAnnualPct: 1,
+};
+
+function parseIdealBucketINRFromStorage(raw: unknown): IdealLiquidityBucketINR | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const o = raw as Record<string, unknown>;
+  return normalizeIdealBuckets({
+    d0_1: o.d0_1,
+    d1_3: o.d1_3,
+    d3_5: o.d3_5,
+    d5p: o.d5p,
+  });
+}
+
+function readLiquidityPayload(raw: string): Partial<LiquiditySettingsState> | null {
+  try {
+    const o = JSON.parse(raw) as Record<string, unknown>;
+    const out: Partial<LiquiditySettingsState> = {};
+    const idealRaw = o.idealBucketINR ?? o.idealLiquidityBucketINR;
+    const ideal = parseIdealBucketINRFromStorage(idealRaw);
+    if (ideal) out.idealBucketINR = ideal;
+    if ("defaultPrematurePenaltyAnnualPct" in o) {
+      const n = Number(o.defaultPrematurePenaltyAnnualPct);
+      if (Number.isFinite(n) && n >= 0) out.defaultPrematurePenaltyAnnualPct = n;
+    }
+    return out;
+  } catch {
+    return null;
+  }
+}
+
+function readLiquidityFromStorage(): Partial<LiquiditySettingsState> | null {
+  if (typeof window === "undefined") return null;
+  const v2 = localStorage.getItem(LIQUIDITY_STORAGE_KEY_V2);
+  if (v2) return readLiquidityPayload(v2);
+  const v1 = localStorage.getItem(LIQUIDITY_STORAGE_KEY_V1);
+  if (!v1) return null;
+  const parsed = readLiquidityPayload(v1);
+  if (parsed) {
+    const migrated: LiquiditySettingsState = {
+      ...defaultLiquiditySettings,
+      ...parsed,
+      idealBucketINR: {
+        ...DEFAULT_IDEAL_LIQUIDITY_BUCKETS,
+        ...parsed.idealBucketINR,
+      },
+    };
+    writeLiquidityToStorage(migrated);
+  }
+  return parsed;
+}
+
+function writeLiquidityToStorage(s: LiquiditySettingsState) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(LIQUIDITY_STORAGE_KEY_V2, JSON.stringify(s));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Default reporting window; null = components use sensible fallbacks (e.g. as-of today). */
+const defaultDateRange: [Date, Date] | null = null;
 
 const defaultFilters: DashboardFilters = {
   assetClasses: [],
@@ -83,98 +157,54 @@ const defaultFilters: DashboardFilters = {
   selectedSector: null,
   scopeAssetClass: "all",
   vehicleFilter: "all",
+  policyCategory1: "all",
+  policyCategory2: "all",
   dateRangePreset: "custom",
   coreBucketSelection: [],
   coreSubCategorySelection: [],
-  portfolioFilter: "all",
   fy: "2024-25",
   performanceFY: getCurrentFY(),
   performanceFrequency: "mom",
   performanceBenchmarks: ["nifty50"],
   performanceYAxisMode: "indexed",
-  performanceViewBy: "portfolio",
+  performanceViewBy: "category",
   performanceMatrixScenario: "moderate",
+  performancePitchSample: undefined,
   netCashFlowDays: 30,
   reportingCurrency: "INR",
   reportingUnits: "cr",
 };
 
-/** Scope bucket id → asset types (via coreBuckets) */
-function getScopeAssetTypes(scope: string): AssetType[] {
-  if (scope === "all") return [];
-  return getAssetTypesForCoreOption(scope) ?? [];
+function buildDefaultFilters(): DashboardFilters {
+  return structuredClone(defaultFilters);
 }
-
-/** Top-level filter dropdown maps to a sleeve; other core-bucket values use legacy asset-type matching. */
-function scopeToSleeveFilter(scope: string): AllocationSleeve | "legacy" | null {
-  if (scope === "all") return null;
-  const map: Record<string, AllocationSleeve> = {
-    cash: "liquid",
-    liquid: "liquid",
-    equity: "equity",
-    debt: "debt",
-    alternatives: "alternatives",
-    unlisted: "unlisted",
-  };
-  if (scope in map) return map[scope]!;
-  return "legacy";
-}
-
-/** Vehicle → asset types */
-const VEHICLE_ASSET_TYPES: Record<string, AssetType[]> = {
-  direct: ["Equity"],
-  mf: ["MutualFund", "DebtMF"],
-  pms: ["PMS"],
-  aif: ["AIF"],
-  etf: ["ETF"],
-  index: ["IndexFund"],
-  fof: ["MutualFund", "AIF"], // FOF can be MF or AIF
-};
 
 function applyFilters(holdings: Holding[], filters: DashboardFilters): Holding[] {
   let result = [...holdings];
 
-  const scope = filters.scopeAssetClass ?? "all";
-  const vehicle = filters.vehicleFilter ?? "all";
-  const vehicleTypes = vehicle === "all" ? [] : (VEHICLE_ASSET_TYPES[vehicle] ?? []);
-  const sleeveMode = scopeToSleeveFilter(scope);
+  const cat1 = filters.policyCategory1 ?? "all";
+  const cat2 = filters.policyCategory2 ?? "all";
+  if (cat1 !== "all") {
+    result = result.filter((h) => {
+      const path = getInvestmentPolicyPath(h);
+      if (path[0] !== cat1) return false;
+      if (cat2 !== "all") {
+        if (path[1] !== cat2) return false;
+      }
+      return true;
+    });
+  }
 
-  if (sleeveMode != null && sleeveMode !== "legacy") {
-    result = result.filter((h) => getAllocationSleeve(h) === sleeveMode);
-    if (vehicleTypes.length > 0) {
-      result = result.filter((h) => vehicleTypes.includes(h.assetType));
-    }
-  } else {
-    const scopeTypes = getScopeAssetTypes(scope);
-    if (scopeTypes.length > 0 || vehicleTypes.length > 0) {
-      const allowed = new Set<AssetType>();
-      if (scopeTypes.length > 0 && vehicleTypes.length > 0) {
-        for (const t of scopeTypes) {
-          if (vehicleTypes.includes(t)) allowed.add(t);
-        }
-      } else if (scopeTypes.length > 0) {
-        scopeTypes.forEach((t) => allowed.add(t));
-      } else {
-        vehicleTypes.forEach((t) => allowed.add(t));
-      }
-      if (allowed.size > 0) {
-        result = result.filter((h) => allowed.has(h.assetType));
-      } else {
-        result = [];
-      }
-    } else {
-      const bucketSelection = filters.coreBucketSelection ?? [];
-      const subSelection = filters.coreSubCategorySelection ?? [];
-      if (subSelection.length > 0) {
-        result = result.filter((h) =>
-          subSelection.some((opt) => holdingMatchesCoreOption(h, opt))
-        );
-      } else if (bucketSelection.length > 0) {
-        result = result.filter((h) =>
-          bucketSelection.some((bid) => holdingMatchesCoreOption(h, bid))
-        );
-      }
-    }
+  const bucketSelection = filters.coreBucketSelection ?? [];
+  const subSelection = filters.coreSubCategorySelection ?? [];
+  if (subSelection.length > 0) {
+    result = result.filter((h) =>
+      subSelection.some((opt) => holdingMatchesCoreOption(h, opt))
+    );
+  } else if (bucketSelection.length > 0) {
+    result = result.filter((h) =>
+      bucketSelection.some((bid) => holdingMatchesCoreOption(h, bid))
+    );
   }
   if (filters.assetClasses.length > 0) {
     result = result.filter((h) => filters.assetClasses.includes(h.assetType));
@@ -206,15 +236,13 @@ function applyFilters(holdings: Holding[], filters: DashboardFilters): Holding[]
     result = result.filter((h) => h.currentValue < h.investedAmount);
   }
 
-  const portfolioFilter = filters.portfolioFilter ?? "all";
-  if (portfolioFilter !== "all") {
-    result = result.filter((h) => (h.portfolioType ?? "Core") === portfolioFilter);
-  }
-
   return result;
 }
 
 type BenchmarkPoint = { date: string; value: number };
+
+const DEFAULT_NIFTY_SERIES: BenchmarkPoint[] = (nifty50History.series ??
+  []) as BenchmarkPoint[];
 
 /** Map of benchmark key → time series (for multi-benchmark performance chart) */
 export type BenchmarkSeriesByKey = Record<string, BenchmarkPoint[]>;
@@ -226,6 +254,7 @@ interface DashboardState {
   /** Multi-benchmark: key (e.g. nifty50) → series; used by FY Performance chart */
   benchmarkSeriesByKey: BenchmarkSeriesByKey;
   peerSeries: BenchmarkPoint[] | null;
+  liquiditySettings: LiquiditySettingsState;
 
   setHoldings: (holdings: Holding[]) => void;
   setFilters: (filters: Partial<DashboardFilters>) => void;
@@ -234,14 +263,17 @@ interface DashboardState {
   setBenchmarkSeriesByKey: (key: string, series: BenchmarkPoint[] | null) => void;
   setPeerSeries: (series: BenchmarkPoint[] | null) => void;
   resetFilters: () => void;
+  setLiquiditySettings: (partial: Partial<LiquiditySettingsState>) => void;
+  hydrateLiquidityFromStorage: () => void;
 }
 
 export const useDashboardStore = create<DashboardState>((set) => ({
-  holdings: [],
-  filters: defaultFilters,
-  benchmarkSeries: null,
-  benchmarkSeriesByKey: {},
+  holdings: getDemoHoldings(),
+  filters: buildDefaultFilters(),
+  benchmarkSeries: DEFAULT_NIFTY_SERIES,
+  benchmarkSeriesByKey: { nifty50: DEFAULT_NIFTY_SERIES },
   peerSeries: null,
+  liquiditySettings: { ...defaultLiquiditySettings },
 
   setHoldings: (holdings) => set({ holdings }),
 
@@ -272,7 +304,30 @@ export const useDashboardStore = create<DashboardState>((set) => ({
     })),
   setPeerSeries: (series) => set({ peerSeries: series }),
 
-  resetFilters: () => set({ filters: defaultFilters }),
+  resetFilters: () => set({ filters: buildDefaultFilters() }),
+
+  setLiquiditySettings: (partial) =>
+    set((state) => {
+      const liquiditySettings = { ...state.liquiditySettings, ...partial };
+      writeLiquidityToStorage(liquiditySettings);
+      return { liquiditySettings };
+    }),
+
+  hydrateLiquidityFromStorage: () => {
+    const parsed = readLiquidityFromStorage();
+    if (!parsed) return;
+    set((state) => ({
+      liquiditySettings: {
+        ...state.liquiditySettings,
+        ...parsed,
+        idealBucketINR: {
+          ...DEFAULT_IDEAL_LIQUIDITY_BUCKETS,
+          ...state.liquiditySettings.idealBucketINR,
+          ...parsed.idealBucketINR,
+        },
+      },
+    }));
+  },
 }));
 
 // Base: filtered holdings (memoized). Recomputes whenever holdings or any filter changes.
@@ -305,6 +360,24 @@ export function usePortfolioSnapshot() {
 export function useAllocationBuckets() {
   const holdings = useFilteredHoldings();
   return useMemo(() => getAllocationBuckets({ holdings }), [holdings]);
+}
+
+export function useAllocationSleeveBreakdown() {
+  const holdings = useFilteredHoldings();
+  const dateRange = useDashboardStore((s) => s.filters.dateRange);
+  return useMemo(
+    () => getAllocationSleeveBreakdown({ holdings, dateRange }),
+    [holdings, dateRange]
+  );
+}
+
+export function usePolicyAllocationTree() {
+  const holdings = useFilteredHoldings();
+  const dateRange = useDashboardStore((s) => s.filters.dateRange);
+  return useMemo(
+    () => getPolicyAllocationTree({ holdings, dateRange }),
+    [holdings, dateRange]
+  );
 }
 
 export function useReturnMetrics() {
@@ -342,7 +415,7 @@ export function usePeriodReturns() {
 }
 
 export interface PerformanceMatrixData {
-  bucketRows: import("@/lib/analytics/types").BucketPeriodReturn[];
+  matrixTree: import("@/lib/analytics/types").PerformanceMatrixTreeNode[];
   benchmarkByPeriod: Record<string, number | null>;
   portfolioByPeriod: Record<string, number | null>;
   portfolioXIRR: number | null;
@@ -356,9 +429,9 @@ export function usePerformanceMatrixData(): PerformanceMatrixData {
   const periodReturns = usePeriodReturns();
   const returnMetrics = useReturnMetrics();
 
-  const bucketRows = useMemo(
+  const matrixTree = useMemo(
     () =>
-      getBucketPeriodReturns({
+      getPerformanceMatrixTree({
         holdings,
         dateRange,
         benchmarkSeries: benchmarkSeries ?? undefined,
@@ -384,13 +457,13 @@ export function usePerformanceMatrixData(): PerformanceMatrixData {
 
   return useMemo(
     () => ({
-      bucketRows,
+      matrixTree,
       benchmarkByPeriod,
       portfolioByPeriod,
       portfolioXIRR: returnMetrics.portfolioXIRR,
       benchmarkXIRR: returnMetrics.benchmarkXIRR,
     }),
-    [bucketRows, benchmarkByPeriod, portfolioByPeriod, returnMetrics.portfolioXIRR, returnMetrics.benchmarkXIRR]
+    [matrixTree, benchmarkByPeriod, portfolioByPeriod, returnMetrics.portfolioXIRR, returnMetrics.benchmarkXIRR]
   );
 }
 
@@ -433,42 +506,6 @@ export function useFYPerformance() {
   );
 }
 
-export function useFYPerformanceByCategory() {
-  const holdings = useFilteredHoldings();
-  const performanceFY = useDashboardStore((s) => s.filters.performanceFY);
-  const fyLegacy = useDashboardStore((s) => s.filters.fy);
-  const dateRange = useDashboardStore((s) => s.filters.dateRange);
-  const benchmarkSeries = useDashboardStore((s) => s.benchmarkSeries);
-  const fy = performanceFY ?? fyLegacy ?? getCurrentFY();
-  return useMemo(
-    () =>
-      getFYPerformanceByCategory({
-        holdings,
-        fy,
-        dateRange,
-        benchmarkSeries: benchmarkSeries ?? undefined,
-      }),
-    [holdings, fy, dateRange, benchmarkSeries]
-  );
-}
-
-export function useFYPerformanceByVehicle() {
-  const holdings = useFilteredHoldings();
-  const performanceFY = useDashboardStore((s) => s.filters.performanceFY);
-  const fyLegacy = useDashboardStore((s) => s.filters.fy);
-  const dateRange = useDashboardStore((s) => s.filters.dateRange);
-  const fy = performanceFY ?? fyLegacy ?? getCurrentFY();
-  return useMemo(
-    () =>
-      getFYPerformanceByVehicle({
-        holdings,
-        fy,
-        dateRange,
-      }),
-    [holdings, fy, dateRange]
-  );
-}
-
 /** Turn period return % into indexed 100 series (null keeps previous or 100). */
 function returnsToIndexed(returns: (number | null)[]): (number | null)[] {
   const out: (number | null)[] = [];
@@ -484,137 +521,114 @@ function returnsToIndexed(returns: (number | null)[]): (number | null)[] {
   return out;
 }
 
-const VEHICLE_LABELS: Record<string, string> = {
-  Equity: "Equity",
-  MutualFund: "Mutual Fund",
-  DebtMF: "Debt MF",
-  PMS: "PMS",
-  AIF: "AIF",
-  ETF: "ETF",
-  IndexFund: "Index Fund",
-};
+export function normalizePerformanceViewBy(
+  v: string | undefined
+): NonNullable<DashboardFilters["performanceViewBy"]> {
+  if (v === "category" || v === "subcategory" || v === "sector" || v === "marketCap") return v;
+  return "category";
+}
 
 /** FY Performance chart: precomputed series from aggregation + benchmark engines (no business logic in chart). */
 export function usePerformanceChartData(): PerformanceChartData | null {
   const holdings = useFilteredHoldings();
   const performanceFY = useDashboardStore((s) => s.filters.performanceFY);
+  const fyLegacy = useDashboardStore((s) => s.filters.fy);
+  const dateRange = useDashboardStore((s) => s.filters.dateRange);
   const performanceFrequency = useDashboardStore((s) => s.filters.performanceFrequency ?? "mom");
   const performanceBenchmarks = useDashboardStore((s) => s.filters.performanceBenchmarks);
   const performanceYAxisMode = useDashboardStore((s) => s.filters.performanceYAxisMode ?? "indexed");
-  const performanceViewBy = useDashboardStore((s) => s.filters.performanceViewBy ?? "portfolio");
+  const rawPerformanceViewBy = useDashboardStore((s) => s.filters.performanceViewBy);
+  const performanceViewBy = normalizePerformanceViewBy(rawPerformanceViewBy);
+  const performancePitchSample = useDashboardStore((s) => s.filters.performancePitchSample);
   const benchmarkSeriesByKey = useDashboardStore((s) => s.benchmarkSeriesByKey);
-  const categoryData = useFYPerformanceByCategory();
-  const vehicleData = useFYPerformanceByVehicle();
 
   return useMemo(() => {
-    const fy = performanceFY ?? getCurrentFY();
+    const fy = performanceFY ?? fyLegacy ?? getCurrentFY();
     const mode = performanceYAxisMode;
+    const usePitchFill = shouldApplyPitchSyntheticMomFill({
+      fy,
+      performancePitchSample,
+      performanceFrequency,
+    });
 
-    if (fy === "2025-26" && performanceFrequency === "mom" && performanceViewBy === "portfolio") {
-      const s = FY_2025_26_SAMPLE;
-      let portfolioValues: (number | null)[];
-      let benchmarkValues: (number | null)[];
-      if (mode === "value") {
-        portfolioValues = s.portfolioIndexed.map((v) => (v != null ? (s.initialPortfolioValue * v) / 100 : null));
-        benchmarkValues = s.benchmarkIndexed.map((v) => (v != null ? (s.initialPortfolioValue * v) / 100 : null));
-      } else if (mode === "return") {
-        portfolioValues = s.portfolioReturnPct;
-        benchmarkValues = s.benchmarkReturnPct;
-      } else {
-        portfolioValues = s.portfolioIndexed;
-        benchmarkValues = s.benchmarkIndexed;
-      }
-      return {
-        xAxisPeriods: s.xAxisPeriods,
-        portfolio: {
-          id: "portfolio",
-          name: "Portfolio",
-          values: portfolioValues,
-          periodReturnsPct: s.portfolioReturnPct,
-        },
-        benchmarks: [
-          {
-            id: "nifty50",
-            name: "Nifty 50",
-            values: benchmarkValues,
-            periodReturnsPct: s.benchmarkReturnPct,
-          },
-        ],
-        initialPortfolioValue: s.initialPortfolioValue,
-        yAxisMode: mode,
+    const segmentInput = { holdings, fy, dateRange };
+    let keyed =
+      performanceViewBy === "category"
+        ? getFYPerformanceByPolicyCategory(segmentInput)
+        : performanceViewBy === "subcategory"
+          ? getFYPerformanceByPolicySubcategory(segmentInput)
+          : performanceViewBy === "sector"
+            ? getFYPerformanceBySector(segmentInput)
+            : getFYPerformanceByMarketCap(segmentInput);
+
+    if (keyed.monthOnMonth.length > 0 && usePitchFill) {
+      keyed = {
+        ...keyed,
+        monthOnMonth: applyPitchSyntheticMomFills(keyed.monthOnMonth),
       };
     }
 
-    if (performanceViewBy === "assetClass" && categoryData.monthOnMonth.length > 0) {
-      const xAxisPeriods = categoryData.monthOnMonth.map((m) => m.month);
-      const liquidReturns = categoryData.monthOnMonth.map((m) => m.liquid);
-      const debtReturns = categoryData.monthOnMonth.map((m) => m.debt);
-      const equityReturns = categoryData.monthOnMonth.map((m) => m.equity);
-      const altReturns = categoryData.monthOnMonth.map((m) => m.alternatives);
-      const unlistedReturns = categoryData.monthOnMonth.map((m) => m.unlisted);
-      const segmentSeries: PerformanceSeries[] = [
-        {
-          id: "liquid",
-          name: "Liquid & equivalents",
-          values: mode === "return" ? liquidReturns : returnsToIndexed(liquidReturns),
-          periodReturnsPct: liquidReturns,
-        },
-        {
-          id: "debt",
-          name: "Debt",
-          values: mode === "return" ? debtReturns : returnsToIndexed(debtReturns),
-          periodReturnsPct: debtReturns,
-        },
-        {
-          id: "equity",
-          name: "Equity",
-          values: mode === "return" ? equityReturns : returnsToIndexed(equityReturns),
-          periodReturnsPct: equityReturns,
-        },
-        {
-          id: "alternatives",
-          name: "Alternatives",
-          values: mode === "return" ? altReturns : returnsToIndexed(altReturns),
-          periodReturnsPct: altReturns,
-        },
-        {
-          id: "unlisted",
-          name: "Unlisted",
-          values: mode === "return" ? unlistedReturns : returnsToIndexed(unlistedReturns),
-          periodReturnsPct: unlistedReturns,
-        },
-      ];
-      return {
-        xAxisPeriods,
-        portfolio: segmentSeries[2]!,
-        benchmarks: [],
-        segmentSeries,
-        yAxisMode: mode === "value" ? "return" : mode,
-      };
-    }
-
-    if (performanceViewBy === "vehicle" && vehicleData.monthOnMonth.length > 0) {
-      const xAxisPeriods = vehicleData.monthOnMonth.map((m) => m.month);
-      const vehicleKeys = new Set<string>();
-      for (const row of vehicleData.monthOnMonth) {
-        Object.keys(row.returns).forEach((k) => vehicleKeys.add(k));
+    if (keyed.monthOnMonth.length > 0) {
+      const xAxisPeriods = keyed.monthOnMonth.map((m) => m.month);
+      const dimKeys = new Set<string>();
+      for (const row of keyed.monthOnMonth) {
+        Object.keys(row.returns).forEach((k) => dimKeys.add(k));
       }
-      const segmentSeries: PerformanceSeries[] = Array.from(vehicleKeys).map((key) => {
-        const returns = vehicleData.monthOnMonth.map((m) => m.returns[key] ?? null);
+      const labelForKey =
+        performanceViewBy === "category" || performanceViewBy === "subcategory"
+          ? (k: string) => POLICY_LABELS[k] ?? k
+          : (k: string) => k;
+      const sortedKeys = Array.from(dimKeys).sort((a, b) =>
+        labelForKey(a).localeCompare(labelForKey(b), undefined, { sensitivity: "base" })
+      );
+      const segmentSeries: PerformanceSeries[] = sortedKeys.map((key) => {
+        const returns = keyed.monthOnMonth.map((m) => m.returns[key] ?? null);
         return {
           id: key,
-          name: VEHICLE_LABELS[key] ?? key,
+          name: labelForKey(key),
           values: mode === "return" ? returns : returnsToIndexed(returns),
           periodReturnsPct: returns,
         };
       });
-      return {
-        xAxisPeriods,
-        portfolio: segmentSeries[0]!,
-        benchmarks: [],
-        segmentSeries,
-        yAxisMode: mode === "value" ? "return" : mode,
-      };
+      if (segmentSeries.length > 0) {
+        const benchKeys = performanceBenchmarks?.length
+          ? performanceBenchmarks
+          : ["nifty50"];
+        const benchResults = runBenchmarkEngine({
+          benchmarkKeys: benchKeys,
+          benchmarkSeriesByKey,
+          fy,
+          frequency: performanceFrequency,
+        });
+        const n = xAxisPeriods.length;
+        const benchmarks: PerformanceSeries[] = benchResults.map((b) => {
+          let periodReturns = b.periodReturns;
+          if (periodReturns.length !== n) {
+            periodReturns =
+              periodReturns.length > n
+                ? periodReturns.slice(0, n)
+                : [...periodReturns, ...Array(n - periodReturns.length).fill(null)];
+          }
+          if (usePitchFill) {
+            periodReturns = fillNullBenchmarkPeriodReturns(periodReturns, b.benchmarkId);
+          }
+          const values =
+            mode === "return" ? periodReturns : returnsToIndexed(periodReturns);
+          return {
+            id: b.benchmarkId,
+            name: b.label,
+            values,
+            periodReturnsPct: periodReturns,
+          };
+        });
+        return {
+          xAxisPeriods,
+          portfolio: segmentSeries[0]!,
+          benchmarks,
+          segmentSeries,
+          yAxisMode: mode === "value" ? "return" : mode,
+        };
+      }
     }
 
     const benchKeys = performanceBenchmarks?.length
@@ -647,15 +661,30 @@ export function usePerformanceChartData(): PerformanceChartData | null {
     };
 
     const benchmarks: PerformanceSeries[] = benchResults.map((b) => {
+      const n = xAxisPeriods.length;
+      let periodReturns = b.periodReturns;
+      if (periodReturns.length !== n) {
+        periodReturns =
+          periodReturns.length > n
+            ? periodReturns.slice(0, n)
+            : [...periodReturns, ...Array(n - periodReturns.length).fill(null)];
+      }
+      if (usePitchFill) {
+        periodReturns = fillNullBenchmarkPeriodReturns(periodReturns, b.benchmarkId);
+      }
+      const indexedSeries = buildIndexedFromPeriodReturns(periodReturns);
       let values: (number | null)[];
-      if (mode === "value") values = b.indexedSeries.map((v) => (v != null ? (agg.initialPortfolioValue * v) / 100 : null));
-      else if (mode === "return") values = b.periodReturns;
-      else values = b.indexedSeries;
+      if (mode === "value")
+        values = indexedSeries.map((v) =>
+          v != null ? (agg.initialPortfolioValue * v) / 100 : null
+        );
+      else if (mode === "return") values = periodReturns;
+      else values = indexedSeries;
       return {
         id: b.benchmarkId,
         name: b.label,
         values,
-        periodReturnsPct: b.periodReturns,
+        periodReturnsPct: periodReturns,
       };
     });
 
@@ -670,12 +699,13 @@ export function usePerformanceChartData(): PerformanceChartData | null {
     holdings,
     performanceFY,
     performanceFrequency,
+    performancePitchSample,
     performanceBenchmarks,
     performanceYAxisMode,
     performanceViewBy,
     benchmarkSeriesByKey,
-    categoryData,
-    vehicleData,
+    fyLegacy,
+    dateRange,
   ]);
 }
 
@@ -824,4 +854,30 @@ export function useFormatINR(): (value: number) => string {
     (value: number) => formatINRWithScale(value, reportingUnits),
     [reportingUnits]
   );
+}
+
+/** Full book + `filters.dateRange` for bucket/return as-of; joins L&E subset XIRR via return engine. */
+export function useLiquidEquivalentsAnalytics(): LiquidEquivalentsAnalytics {
+  const holdings = useDashboardStore((s) => s.holdings);
+  const dateRange = useDashboardStore((s) => s.filters.dateRange);
+  const liquiditySettings = useDashboardStore((s) => s.liquiditySettings);
+  const benchmarkSeries = useDashboardStore((s) => s.benchmarkSeries);
+  const peerSeries = useDashboardStore((s) => s.peerSeries);
+
+  return useMemo(() => {
+    const leHoldings = filterLiquidEquivalentHoldings(holdings);
+    const holdingReturns = getHoldingPeriodReturns({
+      holdings: leHoldings,
+      dateRange,
+      benchmarkSeries: benchmarkSeries ?? undefined,
+      peerSeries: peerSeries ?? undefined,
+    });
+    const base = buildLiquidEquivalentsAnalyticsBase({
+      holdings,
+      dateRange,
+      idealBucketINR: liquiditySettings.idealBucketINR ?? DEFAULT_IDEAL_LIQUIDITY_BUCKETS,
+    });
+    const leReturnsSplit = getLEReturnsSplit(holdings, holdingReturns);
+    return { ...base, leReturnsSplit };
+  }, [holdings, dateRange, liquiditySettings, benchmarkSeries, peerSeries]);
 }

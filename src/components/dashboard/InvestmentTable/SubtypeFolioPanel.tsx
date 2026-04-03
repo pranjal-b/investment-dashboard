@@ -172,13 +172,33 @@ export function SubtypeFolioPanel({ holding: h }: { holding: Holding }) {
               Unlisted · PE / direct
             </p>
             <Row label="Stage" value={h.unlistedStage} />
+            <Row
+              label="Cost (SOA)"
+              value={h.peDirectEarly?.costValue ?? h.peGrowth?.costValue}
+            />
+            <Row label="Units" value={h.peDirectEarly?.units ?? h.peGrowth?.units} />
+            <Row label="Script / ref" value={h.peDirectEarly?.scriptCode ?? h.peGrowth?.scriptCode} />
+            <Row label="Advisor" value={h.peDirectEarly?.advisorName ?? h.peGrowth?.advisorName} />
+            <Row
+              label="DP"
+              value={h.peDirectEarly?.depositoryParticipant ?? h.peGrowth?.depositoryParticipant}
+            />
             <Row label="SOA date" value={h.peDirectEarly?.soaAsOfDate ?? h.peGrowth?.soaAsOfDate} />
+            <Row
+              label="SOA ref"
+              value={h.peDirectEarly?.statementOfAccountRef ?? h.peGrowth?.statementOfAccountRef}
+            />
             <Row label="Profit ₹" value={h.peDirectEarly?.profitRs ?? h.peGrowth?.profitRs} />
             <Row label="Income ₹" value={h.peDirectEarly?.incomeRs ?? h.peGrowth?.incomeRs} />
             <Row label="Capital ₹" value={h.peDirectEarly?.capitalRs ?? h.peGrowth?.capitalRs} />
+            <Row
+              label="Commission ₹"
+              value={h.peDirectEarly?.commissionRs ?? h.peGrowth?.commissionRs}
+            />
             <Row label="Remaining DD" value={h.peDirectEarly?.remainingDrawdownCommitment ?? h.peGrowth?.remainingDrawdownCommitment} />
             <Row label="DIS / dist. value" value={h.peGrowth?.distributionsCurrentValue} />
             <Row label="NAV (SOA)" value={h.peGrowth?.nav} />
+            <Row label="NAV as of" value={h.peGrowth?.valuationAsOfDate} />
             <Row label="SOA reconciled" value={h.peGrowth?.soaReconciled === true ? "Yes" : h.peGrowth?.soaReconciled === false ? "No" : undefined} />
             <Row label="Review check" value={h.peGrowth?.reviewCheck === true ? "Yes" : h.peGrowth?.reviewCheck === false ? "No" : undefined} />
           </div>

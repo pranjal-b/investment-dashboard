@@ -12,6 +12,10 @@ const SUBTYPE_TO_SLEEVE: Partial<Record<InstrumentSubtype, AllocationSleeve>> = 
   liquid_fund: "liquid",
   arbitrage: "liquid",
   bank_balance: "liquid",
+  fixed_deposit: "liquid",
+  tax_free_bond: "debt",
+  venture_debt: "debt",
+  debt_aif: "debt",
   credit_fund: "debt",
   short_maturity_bond: "debt",
   pe_direct_early: "unlisted",
@@ -51,7 +55,7 @@ function isCreditDebtMF(h: Holding): boolean {
 export function getAllocationSleeve(h: Holding): AllocationSleeve {
   if (h.allocationSleeve) return h.allocationSleeve;
 
-  const st = h.instrumentSubtype;
+  const st = h.instrumentSubtype as InstrumentSubtype | undefined;
   if (st && SUBTYPE_TO_SLEEVE[st]) {
     return SUBTYPE_TO_SLEEVE[st]!;
   }

@@ -37,7 +37,12 @@ function buildChartOption(
     if (idx < 0) return axisValue;
 
     const lines: string[] = [];
-    const seriesToShow = useSegmentView ? segmentSeries! : [portfolio, ...benchmarks];
+    const seriesToShow =
+      useSegmentView && benchmarks.length > 0
+        ? [...segmentSeries!, ...benchmarks]
+        : useSegmentView
+          ? segmentSeries!
+          : [portfolio, ...benchmarks];
 
     seriesToShow.forEach((s) => {
       const val = s.values[idx];
@@ -57,7 +62,17 @@ function buildChartOption(
     return `${axisValue}<br/>${lines.join("<br/>")}`;
   };
 
-  let series: { type: string; name: string; data: (number | null)[]; smooth: boolean; symbol: string; lineStyle?: { width: number }; itemStyle?: { color: string }; areaStyle?: unknown }[];
+  type LineSeries = {
+    type: string;
+    name: string;
+    data: (number | null)[];
+    smooth: boolean;
+    symbol: string;
+    lineStyle?: { width: number };
+    itemStyle?: { color: string };
+    areaStyle?: unknown;
+  };
+  let series: LineSeries[];
 
   if (useSegmentView) {
     series = segmentSeries!.map((s, i) => ({
@@ -70,6 +85,19 @@ function buildChartOption(
       itemStyle: { color: SEGMENT_COLORS[i % SEGMENT_COLORS.length] },
       ...(i === 0 ? { areaStyle: { color: "rgba(37, 99, 235, 0.08)" } } : {}),
     }));
+    if (benchmarks.length > 0) {
+      benchmarks.forEach((b, i) => {
+        series.push({
+          type: "line",
+          name: b.name,
+          data: b.values,
+          smooth: true,
+          symbol: "none",
+          lineStyle: { width: 1.5 },
+          itemStyle: { color: BENCHMARK_COLORS[i % BENCHMARK_COLORS.length] },
+        });
+      });
+    }
   } else {
     series = [
       {
@@ -96,7 +124,9 @@ function buildChartOption(
     });
   }
 
-  const legendData = useSegmentView ? segmentSeries!.map((s) => s.name) : [portfolio.name, ...benchmarks.map((b) => b.name)];
+  const legendData = useSegmentView
+    ? [...segmentSeries!.map((s) => s.name), ...benchmarks.map((b) => b.name)]
+    : [portfolio.name, ...benchmarks.map((b) => b.name)];
 
   return {
     ...theme,

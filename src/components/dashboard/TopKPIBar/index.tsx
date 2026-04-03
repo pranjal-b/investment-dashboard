@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { BENCHMARK_LABELS } from "@/lib/performance/benchmarkEngine";
 import {
   useDashboardStore,
   usePortfolioSnapshot,
@@ -13,47 +13,22 @@ function formatPercent(value: number | null): string {
   return `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
 }
 
-/** Treat sub-paisa differences as equal (filtered vs full book). */
-function marketValuesDiffer(a: number, b: number): boolean {
-  return Math.abs(a - b) >= 0.01;
-}
-
 export function TopKPIBar() {
   const snapshot = usePortfolioSnapshot();
   const formatINR = useFormatINR();
-  const allHoldings = useDashboardStore((s) => s.holdings);
-  const totalAUMUnfiltered = useMemo(
-    () => allHoldings.reduce((s, h) => s + h.currentValue, 0),
-    [allHoldings]
+  const primaryBenchmarkKey = useDashboardStore(
+    (s) => s.filters.performanceBenchmarks?.[0] ?? "nifty50"
   );
+  const benchmarkName = BENCHMARK_LABELS[primaryBenchmarkKey] ?? primaryBenchmarkKey;
 
   const alphaPct: number | null =
     snapshot.portfolioXIRR != null && snapshot.benchmarkXIRR != null
       ? snapshot.portfolioXIRR - snapshot.benchmarkXIRR
       : null;
 
-  const filteredMarketValue = snapshot.portfolioMarketValue;
-  const showFullBookTotalAUM = marketValuesDiffer(
-    totalAUMUnfiltered,
-    filteredMarketValue
-  );
-
-  const wealthKpis: KpiItem[] = showFullBookTotalAUM
-    ? [
-        {
-          label: "Total AUM (all portfolios)",
-          value: formatINR(totalAUMUnfiltered),
-        },
-        {
-          label: "Portfolio Market Value",
-          value: formatINR(filteredMarketValue),
-        },
-      ]
-    : [{ label: "Total AUM", value: formatINR(filteredMarketValue) }];
-
-  // —— Single row: Wealth → Profitability → Cash → Performance (institutional order) ——
+  // —— Single row: Wealth → Profitability → Cash → Performance ——
   const kpis: KpiItem[] = [
-    ...wealthKpis,
+    { label: "Portfolio Market Value", value: formatINR(snapshot.portfolioMarketValue) },
     { label: "Total Invested Capital", value: formatINR(snapshot.totalCostValue) },
     {
       label: "Absolute Gain",
@@ -77,21 +52,21 @@ export function TopKPIBar() {
       value: formatPercent(snapshot.portfolioXIRR),
       variant: ((snapshot.portfolioXIRR ?? 0) >= 0 ? "positive" : "negative") as "positive" | "negative",
     },
-    { label: "Benchmark", value: formatPercent(snapshot.benchmarkXIRR) },
     {
-      label: "Alpha (vs Benchmark)",
+      label: `Benchmark (${benchmarkName})`,
+      value: formatPercent(snapshot.benchmarkXIRR),
+      sub: "Equity index CAGR — not for FD / bank",
+    },
+    {
+      label: `Alpha (vs ${benchmarkName})`,
       value: formatPercent(alphaPct),
+      sub: "Whole portfolio vs equity index only",
       variant: ((alphaPct ?? 0) >= 0 ? "positive" : "negative") as "positive" | "negative",
     },
   ];
 
-  const gridCols =
-    kpis.length > 9
-      ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-10"
-      : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-9";
-
   return (
-    <div className={`grid ${gridCols} gap-3`}>
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-9 gap-3">
       {kpis.map((kpi) => (
         <KpiCard key={kpi.label} kpi={kpi} />
       ))}

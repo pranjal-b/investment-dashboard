@@ -28,11 +28,20 @@ function periodReturnFromSeries(
     const d = new Date(p.date);
     return d >= start && d <= end;
   });
-  if (inRange.length < 2) return null;
-  const first = inRange[0]!.value;
-  const last = inRange[inRange.length - 1]!.value;
-  if (first <= 0) return null;
-  return ((last - first) / first) * 100;
+  if (inRange.length >= 2) {
+    const first = inRange[0]!.value;
+    const last = inRange[inRange.length - 1]!.value;
+    if (first <= 0) return null;
+    return ((last - first) / first) * 100;
+  }
+  /** One monthly snapshot in range (e.g. level on 1st): use next point after `end` as month-end proxy. */
+  if (inRange.length === 1) {
+    const first = inRange[0]!.value;
+    const nextAfter = sorted.find((p) => new Date(p.date) > end);
+    if (!nextAfter || first <= 0) return null;
+    return ((nextAfter.value - first) / first) * 100;
+  }
+  return null;
 }
 
 /** MoM period boundaries (start, end) for FY */
@@ -96,8 +105,10 @@ function getPeriods(fy: string, frequency: PerformanceFrequency): { label: strin
   }
 }
 
-/** Indexed series from period returns (base 100) */
-function buildIndexed(periodReturns: (number | null)[]): (number | null)[] {
+/** Indexed series from period returns (base 100 at first period; same compounding as portfolio benchmark line). */
+export function buildIndexedFromPeriodReturns(
+  periodReturns: (number | null)[]
+): (number | null)[] {
   const out: (number | null)[] = [];
   let cum = 100;
   for (const r of periodReturns) {
@@ -140,7 +151,7 @@ export function runBenchmarkEngine(input: BenchmarkEngineInput): BenchmarkSeries
     const periodReturns = periods.map((p) =>
       periodReturnFromSeries(series, p.start, p.end)
     );
-    const indexedSeries = buildIndexed(periodReturns);
+    const indexedSeries = buildIndexedFromPeriodReturns(periodReturns);
     results.push({
       benchmarkId: key,
       label: BENCHMARK_LABELS[key] ?? key,

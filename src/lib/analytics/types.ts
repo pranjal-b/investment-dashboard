@@ -58,8 +58,13 @@ export interface RebalanceInsight {
   message: string;
   overweightClass: string;
   underweightClass: string;
+  /** Macro sleeve ids for the primary rebalance leg */
+  overweightSleeveId: AllocationSleeve;
+  underweightSleeveId: AllocationSleeve;
   rebalanceAmount: number;
   deviationPct: number;
+  /** Optional second sleeve pair when multiple sleeves breach the rebalance threshold */
+  secondaryMessage?: string;
 }
 
 export interface TopHoldingAllocationRow {
@@ -104,8 +109,8 @@ export interface BondTreasuryDiagnostics {
     unsecured: { value: number; pct: number };
     unknownCollateral: { value: number; pct: number };
   };
-  /** Only unsecured book; pctOfUnsecured sums to ~100 */
-  unsecuredByRating: { bucket: NormalizedRatingKey; value: number; pctOfUnsecured: number }[];
+  /** Unsecured sleeve only; `pct` is % of unsecured MV; same bucket order as `ratingDistribution` */
+  unsecuredRatingDistribution: BondSplitSlice[];
   seniorityBreakdown: BondSplitSlice[];
   ratingDistribution: BondSplitSlice[];
   riskSignals: {
@@ -138,12 +143,17 @@ export interface PeriodReturn {
   alternatives: number | null;
 }
 
-/** Bucket-wise period returns for Performance Matrix (periods as columns) */
-export interface BucketPeriodReturn {
-  bucketId: AllocationBucketId;
+/**
+ * Performance matrix rows: same policy path tree as Allocation Overview,
+ * with XIRR-style period returns (3M / 6M / 1Y / 3Y / SI) at each node.
+ */
+export interface PerformanceMatrixTreeNode {
+  pathKey: string;
+  depth: number;
   label: string;
   periodReturns: Record<string, number | null>;
   xirrPct: number | null;
+  children: PerformanceMatrixTreeNode[];
 }
 
 export interface RiskMetrics {

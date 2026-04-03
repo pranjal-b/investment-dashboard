@@ -29,7 +29,7 @@ export interface PerformanceChartData {
   xAxisPeriods: string[];
   portfolio: PerformanceSeries;
   benchmarks: PerformanceSeries[];
-  /** When view-by is asset class or vehicle: segment series replace portfolio+benchmarks in chart */
+  /** When view-by is category / sub-category / sector / market cap: segment series replace portfolio+benchmarks */
   segmentSeries?: PerformanceSeries[];
   /** Optional: excess vs primary benchmark */
   excessReturnSeries?: PerformanceSeries;

@@ -2,7 +2,12 @@
  * Realistic sample data for Performance Matrix (Indian market context).
  * Guardrails: 3M -8% to +12%, 6M -12% to +18%, 1Y -15% to +28%, 3Y CAGR 8–22%, SI CAGR 9–18%.
  * Use for prototype; toggle between moderate, conservative, and bull scenarios.
+ *
+ * Scenario rows (except benchmark / portfolio) are rolled into the same drill-down tree as Live:
+ * Equity investment → Direct Equity, Equity MF, PMS, AIF, ETF; Liquid & equivalents → Bank & liquid.
  */
+
+import type { PerformanceMatrixTreeNode } from "@/lib/analytics/types";
 
 export interface PerformanceMatrixSampleRow {
   bucket: string;
@@ -54,6 +59,14 @@ export const performanceMatrixModerate: PerformanceMatrixSampleRow[] = [
     "1Y": 16.2,
     "3Y": 14.9,
     "Since Inception": 14.5,
+  },
+  {
+    bucket: "Bank & liquid",
+    "3M": 1.1,
+    "6M": 2.2,
+    "1Y": 4.4,
+    "3Y": 4.1,
+    "Since Inception": 4.0,
   },
   {
     bucket: "Benchmark (Nifty 50)",
@@ -116,6 +129,14 @@ export const performanceMatrixConservative: PerformanceMatrixSampleRow[] = [
     "Since Inception": 9.1,
   },
   {
+    bucket: "Bank & liquid",
+    "3M": 0.7,
+    "6M": 1.4,
+    "1Y": 2.8,
+    "3Y": 2.9,
+    "Since Inception": 2.8,
+  },
+  {
     bucket: "Benchmark (Nifty 50)",
     "3M": 1.4,
     "6M": 3.6,
@@ -176,6 +197,14 @@ export const performanceMatrixBull: PerformanceMatrixSampleRow[] = [
     "Since Inception": 15.2,
   },
   {
+    bucket: "Bank & liquid",
+    "3M": 1.6,
+    "6M": 3.1,
+    "1Y": 5.2,
+    "3Y": 5.0,
+    "Since Inception": 4.9,
+  },
+  {
     bucket: "Benchmark (Nifty 50)",
     "3M": 6.8,
     "6M": 11.9,
@@ -212,4 +241,100 @@ export function getPerformanceMatrixSample(
     default:
       return performanceMatrixModerate;
   }
+}
+
+const SAMPLE_EQUITY_LEAF_BUCKETS = new Set([
+  "Direct Equity",
+  "Equity MF",
+  "PMS",
+  "AIF",
+  "ETF",
+]);
+const SAMPLE_LIQUID_LEAF_BUCKETS = new Set(["Bank & liquid"]);
+
+function sampleRowToPeriodReturns(row: PerformanceMatrixSampleRow): Record<string, number | null> {
+  return {
+    "3M": row["3M"],
+    "6M": row["6M"],
+    "1Y": row["1Y"],
+    "3Y": row["3Y"],
+    SI: row["Since Inception"],
+  };
+}
+
+function meanSamplePeriodReturns(rows: PerformanceMatrixSampleRow[]): Record<string, number | null> {
+  const keys = ["3M", "6M", "1Y", "3Y", "Since Inception"] as const;
+  const out: Record<string, number | null> = {};
+  for (const k of keys) {
+    const engineKey = k === "Since Inception" ? "SI" : k;
+    const vals = rows.map((r) => r[k]).filter((v): v is number => v != null && !Number.isNaN(v));
+    out[engineKey] = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+  }
+  return out;
+}
+
+function sampleLeafNode(
+  row: PerformanceMatrixSampleRow,
+  pathKey: string,
+  depth: number
+): PerformanceMatrixTreeNode {
+  return {
+    pathKey,
+    depth,
+    label: row.bucket,
+    periodReturns: sampleRowToPeriodReturns(row),
+    xirrPct: row["Since Inception"],
+    children: [],
+  };
+}
+
+/** Drill-down sample tree (same expand UX as Live).  */
+export function getPerformanceMatrixSampleTree(
+  scenario: PerformanceMatrixScenario
+): PerformanceMatrixTreeNode[] {
+  const flat = getPerformanceMatrixSample(scenario);
+  const dataRows = flat.filter(
+    (r) => r.bucket !== "Benchmark (Nifty 50)" && r.bucket !== "Portfolio XIRR"
+  );
+  const equityLeaves = dataRows.filter((r) => SAMPLE_EQUITY_LEAF_BUCKETS.has(r.bucket));
+  const liquidLeaves = dataRows.filter((r) => SAMPLE_LIQUID_LEAF_BUCKETS.has(r.bucket));
+
+  const nodes: PerformanceMatrixTreeNode[] = [];
+
+  if (equityLeaves.length > 0) {
+    const children = equityLeaves.map((r, i) =>
+      sampleLeafNode(r, `sample:equity:${scenario}:${i}:${r.bucket}`, 1)
+    );
+    nodes.push({
+      pathKey: `sample:equity-investment:${scenario}`,
+      depth: 0,
+      label: "Equity investment",
+      periodReturns: meanSamplePeriodReturns(equityLeaves),
+      xirrPct: null,
+      children,
+    });
+  }
+
+  if (liquidLeaves.length > 0) {
+    const children = liquidLeaves.map((r, i) =>
+      sampleLeafNode(r, `sample:liquid:${scenario}:${i}:${r.bucket}`, 1)
+    );
+    nodes.push({
+      pathKey: `sample:liquid-equivalents:${scenario}`,
+      depth: 0,
+      label: "Liquid & equivalents",
+      periodReturns: meanSamplePeriodReturns(liquidLeaves),
+      xirrPct: null,
+      children,
+    });
+  }
+
+  const used = new Set([...SAMPLE_EQUITY_LEAF_BUCKETS, ...SAMPLE_LIQUID_LEAF_BUCKETS]);
+  const orphanLeaves = dataRows.filter((r) => !used.has(r.bucket));
+  for (let i = 0; i < orphanLeaves.length; i++) {
+    const r = orphanLeaves[i]!;
+    nodes.push(sampleLeafNode(r, `sample:orphan:${scenario}:${i}:${r.bucket}`, 0));
+  }
+
+  return nodes;
 }

@@ -1,5 +1,5 @@
 /**
- * Debt-sleeve bond treasury diagnostics: collateral, seniority, rating mix, templated risk narrative.
+ * Debt-sleeve debt investment diagnostics: collateral, seniority, rating mix, templated risk narrative.
  * All rules live here; UI only renders series + copy.
  */
 
@@ -76,7 +76,7 @@ export function getBondTreasuryDiagnostics(input: {
         unsecured: { value: 0, pct: 0 },
         unknownCollateral: { value: 0, pct: 0 },
       },
-      unsecuredByRating: [],
+      unsecuredRatingDistribution: [],
       seniorityBreakdown: [],
       ratingDistribution: [],
       riskSignals: {
@@ -89,7 +89,7 @@ export function getBondTreasuryDiagnostics(input: {
         bullets: [],
       },
       overallAssessment:
-        "No debt-sleeve holdings in the current filter. Add bond or credit-fund positions with ratings and seniority for treasury diagnostics.",
+        "No debt-sleeve holdings in the current filter. Add bond or credit-fund positions with ratings and seniority for debt investment diagnostics.",
     };
   }
 
@@ -124,20 +124,21 @@ export function getBondTreasuryDiagnostics(input: {
     ratingWithinUnsecured.set(r, (ratingWithinUnsecured.get(r) ?? 0) + h.currentValue);
   }
 
-  const unsecuredByRating: {
-    bucket: NormalizedRatingKey;
-    value: number;
-    pctOfUnsecured: number;
-  }[] = [];
+  const unsecuredRatingDistribution: BondSplitSlice[] = [];
   if (unsecuredStrict > 0) {
-    for (const [bucket, value] of ratingWithinUnsecured) {
-      unsecuredByRating.push({
-        bucket,
-        value,
-        pctOfUnsecured: pct(value, unsecuredStrict),
-      });
+    for (const rk of RATING_ORDER) {
+      const val = ratingWithinUnsecured.get(rk) ?? 0;
+      if (val > 0) {
+        unsecuredRatingDistribution.push(
+          slice(rk, rk === "SOV" ? "Sovereign" : rk, val, unsecuredStrict)
+        );
+      }
     }
-    unsecuredByRating.sort((a, b) => b.value - a.value);
+    for (const [rk, val] of ratingWithinUnsecured) {
+      if (!RATING_ORDER.includes(rk) && val > 0) {
+        unsecuredRatingDistribution.push(slice(rk, rk, val, unsecuredStrict));
+      }
+    }
   }
 
   const seniorityBreakdown: BondSplitSlice[] = [];
@@ -225,7 +226,7 @@ export function getBondTreasuryDiagnostics(input: {
         pct: pct(unknownCollateral, totalDebtValue),
       },
     },
-    unsecuredByRating,
+    unsecuredRatingDistribution,
     seniorityBreakdown,
     ratingDistribution,
     riskSignals: {
