@@ -377,6 +377,11 @@ export interface DashboardFilters {
   policyCategory1?: string;
   /** Sub-category under category 1. `"all"` = all sub-categories. Only applies when category 1 is set. */
   policyCategory2?: string;
+  /**
+   * Deepest policy bucket when the path has 3 segments (e.g. Core portfolio, EMF, structured-credit L3).
+   * `"all"` = no extra filter. Only applies when category 1 and 2 are set and a third level exists.
+   */
+  policyCategory3?: string;
   /** Date range preset; when "custom", dateRange is user-defined */
   dateRangePreset?: DateRangePreset;
   /** Multi-select: bucket ids (legacy) */

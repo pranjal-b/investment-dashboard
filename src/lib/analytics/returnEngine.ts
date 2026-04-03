@@ -8,6 +8,7 @@ import {
   getInvestmentPolicyPath,
   labelForPolicySegment,
   policyPathKey,
+  POLICY_SIBLING_ORDER,
 } from "@/lib/classification/investmentPolicyCategory";
 import type { ReturnMetrics, PeriodReturn, PerformanceMatrixTreeNode } from "./types";
 import { holdingsUnderPrefix, sortChildIds } from "./policyAllocationTree";
@@ -167,6 +168,13 @@ function computePeriodReturnsForHoldings(
   return { periodReturns, xirrPct: xirr != null ? xirr * 100 : null };
 }
 
+function emptyPeriodReturns(): Record<string, number | null> {
+  return Object.fromEntries(PERFORMANCE_MATRIX_PERIODS.map((p) => [p, null])) as Record<
+    string,
+    number | null
+  >;
+}
+
 /** Same policy path hierarchy as Allocation Overview, with period returns at each node. */
 export function getPerformanceMatrixTree(input: ReturnEngineInput): PerformanceMatrixTreeNode[] {
   const { holdings, dateRange } = input;
@@ -181,15 +189,27 @@ export function getPerformanceMatrixTree(input: ReturnEngineInput): PerformanceM
     byLeaf.get(key)!.push(h);
   }
 
-  function buildNode(pathKey: string): PerformanceMatrixTreeNode | null {
+  function mvUnder(pathKey: string): number {
+    return holdingsUnderPrefix(pathKey, byLeaf).reduce((s, h) => s + h.currentValue, 0);
+  }
+
+  function buildNode(pathKey: string): PerformanceMatrixTreeNode {
     const hh = holdingsUnderPrefix(pathKey, byLeaf);
     const mv = hh.reduce((s, h) => s + h.currentValue, 0);
-    if (mv <= 0) return null;
-
-    const { periodReturns, xirrPct } = computePeriodReturnsForHoldings(hh, asOf, asOfStr, dateRange);
     const parts = pathKey.split("|");
     const segmentId = parts[parts.length - 1]!;
     const depth = parts.length - 1;
+
+    let periodReturns: Record<string, number | null>;
+    let xirrPct: number | null;
+    if (mv > 0) {
+      const computed = computePeriodReturnsForHoldings(hh, asOf, asOfStr, dateRange);
+      periodReturns = computed.periodReturns;
+      xirrPct = computed.xirrPct;
+    } else {
+      periodReturns = emptyPeriodReturns();
+      xirrPct = null;
+    }
 
     const childIds = new Set<string>();
     const prefixWithPipe = `${pathKey}|`;
@@ -202,7 +222,7 @@ export function getPerformanceMatrixTree(input: ReturnEngineInput): PerformanceM
     const sortedChildSegments = sortChildIds(pathKey, Array.from(childIds));
     const children = sortedChildSegments
       .map((seg) => buildNode(`${pathKey}|${seg}`))
-      .filter((n): n is PerformanceMatrixTreeNode => n != null);
+      .filter((n) => mvUnder(n.pathKey) > 0);
 
     return {
       pathKey,
@@ -214,14 +234,8 @@ export function getPerformanceMatrixTree(input: ReturnEngineInput): PerformanceM
     };
   }
 
-  const rootSegments = sortChildIds(
-    "",
-    Array.from(new Set([...byLeaf.keys()].map((k) => k.split("|")[0]!).filter(Boolean)))
-  );
-
-  return rootSegments
-    .map((seg) => buildNode(seg))
-    .filter((n): n is PerformanceMatrixTreeNode => n != null);
+  const rootSegments = POLICY_SIBLING_ORDER[""] ?? [];
+  return rootSegments.map((seg) => buildNode(seg));
 }
 
 export interface HoldingPeriodReturn {

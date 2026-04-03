@@ -150,8 +150,8 @@ export const POLICY_SIBLING_ORDER: Record<string, string[]> = {
   ],
   [POLICY_PATH.L1.EQUITY]: [POLICY_PATH.EQ.SELF, POLICY_PATH.EQ.MGD],
   [`${POLICY_PATH.L1.EQUITY}|${POLICY_PATH.EQ.SELF}`]: [
-    POLICY_PATH.EQ_SELF.OLD,
     POLICY_PATH.EQ_SELF.CORE,
+    POLICY_PATH.EQ_SELF.OLD,
     POLICY_PATH.EQ_SELF.EXIT,
   ],
   [`${POLICY_PATH.L1.EQUITY}|${POLICY_PATH.EQ.MGD}`]: [
@@ -435,6 +435,18 @@ export const POLICY_CATEGORY_1_OPTIONS: { id: string; label: string }[] = (
 export function getPolicyCategory2Options(category1: string): { id: string; label: string }[] {
   if (category1 === "all") return [];
   const ids = POLICY_SIBLING_ORDER[category1];
+  if (!ids?.length) return [];
+  return ids.map((id) => ({ id, label: POLICY_LABELS[id] ?? id }));
+}
+
+/** Third-level buckets (e.g. Core portfolio / EMF / … under equity self-managed or managed). */
+export function getPolicyCategory3Options(
+  category1: string,
+  category2: string
+): { id: string; label: string }[] {
+  if (category1 === "all" || category2 === "all") return [];
+  const prefix = `${category1}|${category2}`;
+  const ids = POLICY_SIBLING_ORDER[prefix];
   if (!ids?.length) return [];
   return ids.map((id) => ({ id, label: POLICY_LABELS[id] ?? id }));
 }

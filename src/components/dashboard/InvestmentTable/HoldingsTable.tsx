@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { ChevronDown, ChevronRight, Search } from "lucide-react";
 import { useFilteredHoldings } from "@/lib/store/dashboardStore";
 import { computeAssetMetrics } from "@/lib/calculations/metrics";
-import type { Holding } from "@/lib/types";
+import type { AssetType, Holding } from "@/lib/types";
 import { getAllocationSleeve } from "@/lib/classification/sleeveClassifier";
 import { RowExpandableContent } from "./RowExpandableContent";
 import { useDashboardStore } from "@/lib/store/dashboardStore";
@@ -45,8 +45,37 @@ function formatPercent(value: number | null): string {
 
 const columnHelper = createColumnHelper<Holding>();
 
+/** Investment Table category tabs (asset type); order matches product taxonomy. */
+const TABLE_ASSET_TAB_ORDER: AssetType[] = [
+  "Equity",
+  "PMS",
+  "AIF",
+  "MutualFund",
+  "DebtMF",
+  "IndexFund",
+  "ETF",
+];
+
+const ASSET_TAB_LABELS: Record<AssetType, string> = {
+  Equity: "Equity",
+  PMS: "PMS",
+  AIF: "AIF",
+  MutualFund: "Mutual Fund",
+  DebtMF: "Debt MF",
+  IndexFund: "Index Fund",
+  ETF: "ETF",
+};
+
+type TableAssetTab = "all" | AssetType;
+
 export function HoldingsTable() {
-  const holdings = useFilteredHoldings();
+  const baseHoldings = useFilteredHoldings();
+  const [assetTab, setAssetTab] = useState<TableAssetTab>("all");
+
+  const holdings = useMemo(() => {
+    if (assetTab === "all") return baseHoldings;
+    return baseHoldings.filter((h) => h.assetType === assetTab);
+  }, [baseHoldings, assetTab]);
   const dateRange = useDashboardStore((s) => s.filters.dateRange);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -165,7 +194,7 @@ export function HoldingsTable() {
         ),
       }),
     ],
-    [dateRange]
+    [dateRange, expandedRows]
   );
 
   const table = useReactTable({
@@ -184,9 +213,9 @@ export function HoldingsTable() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-lg font-semibold text-slate-900">Investment Table</h2>
-        <div className="relative flex items-center">
+        <div className="relative flex items-center shrink-0">
           <Search className="absolute left-3 h-4 w-4 text-slate-400 pointer-events-none" />
           <Input
             placeholder="Search..."
@@ -194,6 +223,43 @@ export function HoldingsTable() {
             onChange={(e) => setGlobalFilter(e.target.value)}
             className="h-9 w-56 pl-9 pr-3 rounded-lg border-slate-300 text-sm"
           />
+        </div>
+      </div>
+      <div className="overflow-x-auto pb-1 -mx-1 px-1">
+        <div className="flex w-max min-w-full items-center gap-1 border-b border-slate-200">
+          <button
+            type="button"
+            onClick={() => {
+              setAssetTab("all");
+              setExpandedRows(new Set());
+            }}
+            className={cn(
+              "shrink-0 px-3 py-2 text-sm font-medium transition-colors border-b-2 -mb-px",
+              assetTab === "all"
+                ? "border-slate-900 text-slate-900"
+                : "border-transparent text-slate-500 hover:text-slate-800"
+            )}
+          >
+            All
+          </button>
+          {TABLE_ASSET_TAB_ORDER.map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => {
+                setAssetTab(t);
+                setExpandedRows(new Set());
+              }}
+              className={cn(
+                "shrink-0 px-3 py-2 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap",
+                assetTab === t
+                  ? "border-slate-900 text-slate-900"
+                  : "border-transparent text-slate-500 hover:text-slate-800"
+              )}
+            >
+              {ASSET_TAB_LABELS[t]}
+            </button>
+          ))}
         </div>
       </div>
       <div className="rounded-xl border border-slate-200 overflow-hidden">

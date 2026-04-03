@@ -159,6 +159,7 @@ const defaultFilters: DashboardFilters = {
   vehicleFilter: "all",
   policyCategory1: "all",
   policyCategory2: "all",
+  policyCategory3: "all",
   dateRangePreset: "custom",
   coreBucketSelection: [],
   coreSubCategorySelection: [],
@@ -184,12 +185,16 @@ function applyFilters(holdings: Holding[], filters: DashboardFilters): Holding[]
 
   const cat1 = filters.policyCategory1 ?? "all";
   const cat2 = filters.policyCategory2 ?? "all";
+  const cat3 = filters.policyCategory3 ?? "all";
   if (cat1 !== "all") {
     result = result.filter((h) => {
       const path = getInvestmentPolicyPath(h);
       if (path[0] !== cat1) return false;
       if (cat2 !== "all") {
         if (path[1] !== cat2) return false;
+      }
+      if (cat3 !== "all") {
+        if (path[2] !== cat3) return false;
       }
       return true;
     });

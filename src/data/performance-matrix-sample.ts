@@ -288,7 +288,26 @@ function sampleLeafNode(
   };
 }
 
-/** Drill-down sample tree (same expand UX as Live).  */
+const SAMPLE_L1_EMPTY_RETURNS: Record<string, number | null> = {
+  "3M": null,
+  "6M": null,
+  "1Y": null,
+  "3Y": null,
+  SI: null,
+};
+
+function sampleL1Placeholder(pathKey: string, label: string): PerformanceMatrixTreeNode {
+  return {
+    pathKey,
+    depth: 0,
+    label,
+    periodReturns: { ...SAMPLE_L1_EMPTY_RETURNS },
+    xirrPct: null,
+    children: [],
+  };
+}
+
+/** Drill-down sample tree (same expand UX as Live). Always shows all five policy L1 rows. */
 export function getPerformanceMatrixSampleTree(
   scenario: PerformanceMatrixScenario
 ): PerformanceMatrixTreeNode[] {
@@ -299,35 +318,49 @@ export function getPerformanceMatrixSampleTree(
   const equityLeaves = dataRows.filter((r) => SAMPLE_EQUITY_LEAF_BUCKETS.has(r.bucket));
   const liquidLeaves = dataRows.filter((r) => SAMPLE_LIQUID_LEAF_BUCKETS.has(r.bucket));
 
-  const nodes: PerformanceMatrixTreeNode[] = [];
+  const liquidNode: PerformanceMatrixTreeNode =
+    liquidLeaves.length > 0
+      ? {
+          pathKey: `sample:liquid-equivalents:${scenario}`,
+          depth: 0,
+          label: "Liquid & equivalents",
+          periodReturns: meanSamplePeriodReturns(liquidLeaves),
+          xirrPct: null,
+          children: liquidLeaves.map((r, i) =>
+            sampleLeafNode(r, `sample:liquid:${scenario}:${i}:${r.bucket}`, 1)
+          ),
+        }
+      : sampleL1Placeholder(`sample:liquid-equivalents:${scenario}`, "Liquid & equivalents");
 
-  if (equityLeaves.length > 0) {
-    const children = equityLeaves.map((r, i) =>
-      sampleLeafNode(r, `sample:equity:${scenario}:${i}:${r.bucket}`, 1)
-    );
-    nodes.push({
-      pathKey: `sample:equity-investment:${scenario}`,
-      depth: 0,
-      label: "Equity investment",
-      periodReturns: meanSamplePeriodReturns(equityLeaves),
-      xirrPct: null,
-      children,
-    });
-  }
+  const debtNode = sampleL1Placeholder(`sample:debt-investment:${scenario}`, "Debt investment");
 
-  if (liquidLeaves.length > 0) {
-    const children = liquidLeaves.map((r, i) =>
-      sampleLeafNode(r, `sample:liquid:${scenario}:${i}:${r.bucket}`, 1)
-    );
-    nodes.push({
-      pathKey: `sample:liquid-equivalents:${scenario}`,
-      depth: 0,
-      label: "Liquid & equivalents",
-      periodReturns: meanSamplePeriodReturns(liquidLeaves),
-      xirrPct: null,
-      children,
-    });
-  }
+  const equityNode: PerformanceMatrixTreeNode =
+    equityLeaves.length > 0
+      ? {
+          pathKey: `sample:equity-investment:${scenario}`,
+          depth: 0,
+          label: "Equity investment",
+          periodReturns: meanSamplePeriodReturns(equityLeaves),
+          xirrPct: null,
+          children: equityLeaves.map((r, i) =>
+            sampleLeafNode(r, `sample:equity:${scenario}:${i}:${r.bucket}`, 1)
+          ),
+        }
+      : sampleL1Placeholder(`sample:equity-investment:${scenario}`, "Equity investment");
+
+  const altNode = sampleL1Placeholder(
+    `sample:alternative-investments:${scenario}`,
+    "Alternative investments"
+  );
+  const unlistedNode = sampleL1Placeholder(`sample:unlisted:${scenario}`, "Unlisted");
+
+  const nodes: PerformanceMatrixTreeNode[] = [
+    liquidNode,
+    debtNode,
+    equityNode,
+    altNode,
+    unlistedNode,
+  ];
 
   const used = new Set([...SAMPLE_EQUITY_LEAF_BUCKETS, ...SAMPLE_LIQUID_LEAF_BUCKETS]);
   const orphanLeaves = dataRows.filter((r) => !used.has(r.bucket));

@@ -29,6 +29,7 @@ import {
 import {
   POLICY_CATEGORY_1_OPTIONS,
   getPolicyCategory2Options,
+  getPolicyCategory3Options,
 } from "@/lib/classification/investmentPolicyCategory";
 import { ChevronDown } from "lucide-react";
 
@@ -84,9 +85,14 @@ export function GlobalFilters() {
 
   const policyCategory1 = filters.policyCategory1 ?? "all";
   const policyCategory2 = filters.policyCategory2 ?? "all";
+  const policyCategory3 = filters.policyCategory3 ?? "all";
   const category2Options = useMemo(
     () => getPolicyCategory2Options(policyCategory1),
     [policyCategory1]
+  );
+  const category3Options = useMemo(
+    () => getPolicyCategory3Options(policyCategory1, policyCategory2),
+    [policyCategory1, policyCategory2]
   );
   const marketCapValue =
     filters.marketCaps.length === 0 ? "all" : (filters.marketCaps[0] as "all" | "Large" | "Mid" | "Small");
@@ -98,6 +104,7 @@ export function GlobalFilters() {
   const hasActiveFilters =
     policyCategory1 !== "all" ||
     policyCategory2 !== "all" ||
+    policyCategory3 !== "all" ||
     filters.sectors.length > 0 ||
     filters.marketCaps.length > 0 ||
     (filters.reportingCurrency && filters.reportingCurrency !== "INR") ||
@@ -111,11 +118,23 @@ export function GlobalFilters() {
         const sub = category2Options.find((o) => o.id === policyCategory2);
         if (sub) parts.push(sub.label);
       }
+      if (policyCategory3 !== "all") {
+        const leaf = category3Options.find((o) => o.id === policyCategory3);
+        if (leaf) parts.push(leaf.label);
+      }
     }
     if (filters.marketCaps.length > 0) parts.push(`${filters.marketCaps[0]} Cap`);
     if (filters.sectors.length > 0) parts.push(filters.sectors.join(", "));
     return parts;
-  }, [policyCategory1, policyCategory2, category2Options, filters.marketCaps, filters.sectors]);
+  }, [
+    policyCategory1,
+    policyCategory2,
+    policyCategory3,
+    category2Options,
+    category3Options,
+    filters.marketCaps,
+    filters.sectors,
+  ]);
 
   const setDateFrom = (value: string) => {
     const from = value ? new Date(value + "T00:00:00") : (dateRange?.[0] ?? new Date());
@@ -133,7 +152,7 @@ export function GlobalFilters() {
 
   return (
     <section className="bg-white rounded-2xl shadow-sm p-4 overflow-x-auto">
-      <div className="grid grid-cols-9 gap-3 items-end min-w-[720px]">
+      <div className="grid grid-cols-10 gap-3 items-end min-w-[800px]">
         {/* Column 1: Date Range (From / To) - extra width for two inputs */}
         <div className="flex flex-col gap-1.5 min-w-0 col-span-2">
           <span className={labelClass}>Date Range</span>
@@ -163,7 +182,9 @@ export function GlobalFilters() {
           <span className={labelClass}>Category</span>
           <Select
             value={policyCategory1}
-            onValueChange={(v) => setFilters({ policyCategory1: v, policyCategory2: "all" })}
+            onValueChange={(v) =>
+              setFilters({ policyCategory1: v, policyCategory2: "all", policyCategory3: "all" })
+            }
           >
             <SelectTrigger className={selectTriggerClass}>
               <SelectValue placeholder="All" />
@@ -184,7 +205,7 @@ export function GlobalFilters() {
           <span className={labelClass}>Sub-category</span>
           <Select
             value={policyCategory2}
-            onValueChange={(v) => setFilters({ policyCategory2: v })}
+            onValueChange={(v) => setFilters({ policyCategory2: v, policyCategory3: "all" })}
             disabled={policyCategory1 === "all"}
           >
             <SelectTrigger className={selectTriggerClass}>
@@ -203,7 +224,37 @@ export function GlobalFilters() {
           </Select>
         </div>
 
-        {/* Column 4: Sector (multi-select dropdown) */}
+        {/* Column 4: Policy detail (L3: Core portfolio, EMF, …) */}
+        <div className="flex flex-col gap-1.5 min-w-0">
+          <span className={labelClass}>Detail</span>
+          <Select
+            value={policyCategory3}
+            onValueChange={(v) => setFilters({ policyCategory3: v })}
+            disabled={policyCategory1 === "all" || policyCategory2 === "all" || category3Options.length === 0}
+          >
+            <SelectTrigger className={selectTriggerClass}>
+              <SelectValue
+                placeholder={
+                  category3Options.length === 0
+                    ? "—"
+                    : policyCategory2 === "all"
+                      ? "Select sub-category"
+                      : "All"
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              {category3Options.map((o) => (
+                <SelectItem key={o.id} value={o.id}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Column 5: Sector (multi-select dropdown) */}
         <div className="flex flex-col gap-1.5 min-w-0">
           <span className={labelClass}>Sector</span>
           <DropdownMenu>

@@ -262,20 +262,12 @@ export function PerformanceMatrix() {
                 </>
               ) : (
                 <>
-                  {matrixTree.length === 0 ? (
-                    <tr>
-                      <td colSpan={periods.length + 1} className="py-8 px-3 text-sm text-muted-foreground text-center">
-                        No holdings in view.
-                      </td>
-                    </tr>
-                  ) : (
-                    <MatrixRows
-                      nodes={matrixTree}
-                      expanded={expandedPaths}
-                      toggle={togglePath}
-                      periods={periods}
-                    />
-                  )}
+                  <MatrixRows
+                    nodes={matrixTree}
+                    expanded={expandedPaths}
+                    toggle={togglePath}
+                    periods={periods}
+                  />
                   <tr className="border-b border-border/50 hover:bg-muted/30">
                     <td className="py-2 px-3 font-medium text-muted-foreground">
                       Benchmark (XIRR)
@@ -308,8 +300,8 @@ export function PerformanceMatrix() {
       </Card>
       <p className="text-xs text-muted-foreground">
         {useSample
-          ? "Sample data: expand Equity investment or Liquid & equivalents to see sub-rows (same control pattern as Live). Switch to Live for your holdings tree."
-          : "Same investment policy tree as Allocation Overview: expand any category to drill into sub-categories. Benchmark row uses global performance controls; Since Inception aligns with portfolio/benchmark XIRR."}
+          ? "Sample data: all five policy categories are listed; expand Liquid & equivalents or Equity investment to see sub-rows. Switch to Live for your holdings tree."
+          : "Same investment policy tree as Allocation Overview: all five L1 categories are always listed (— when no holdings). Expand any category with sub-rows to drill down. Benchmark row uses global performance controls; Since Inception aligns with portfolio/benchmark XIRR."}
       </p>
     </div>
   );
